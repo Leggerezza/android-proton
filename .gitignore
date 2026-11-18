@@ -7,11 +7,18 @@ local.properties
 captures/
 .externalNativeBuild/
 .cxx/
+.kotlin/
 
 # Go
 core/bin/
 *.test
 *.out
+# test vectors are source, not build output (PROMPT.md 9.5)
+!core/testdata/**
+
+# IDE: extensions.json is a team decision, the rest of .vscode is not
+.vscode/*
+!.vscode/extensions.json
 
 # Secrets — never commit
 *.jks
@@ -30,5 +37,3 @@ protocol-*.jsonl
 # OS / editors
 .DS_Store
 Thumbs.db
-.vscode/
-!.vscode/extensions.json

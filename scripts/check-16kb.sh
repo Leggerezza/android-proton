@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
 # Verify that every native library in the APK is 16 KB page aligned.
-# Usage: scripts/check-16kb.sh path/to/app-release.apk
+# Usage: scripts/check-16kb.sh [path/to/app.apk]
+#   Without an argument the newest release APK is used: an unsigned release
+#   build produces app-release-unsigned.apk, so a hard-coded name would fail.
 set -euo pipefail
 
-apk="${1:-app/build/outputs/apk/release/app-release.apk}"
-[ -f "$apk" ] || { echo "APK not found: $apk" >&2; exit 2; }
+apk="${1:-}"
+if [ -z "$apk" ]; then
+  apk="$(ls -t app/build/outputs/apk/release/*.apk 2>/dev/null | head -n 1 || true)"
+fi
+[ -n "$apk" ] && [ -f "$apk" ] || { echo "APK not found: ${apk:-app/build/outputs/apk/release/*.apk}" >&2; exit 2; }
+echo "checking $apk"
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
