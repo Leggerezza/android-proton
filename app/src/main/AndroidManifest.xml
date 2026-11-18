@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- The node only listens on 127.0.0.1 and dials the Proton entry, but it
+         still needs the network permission. No VpnService: routing is FlClash's
+         job (PROMPT.md section 1). -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <application
+        android:name=".ProtonNodeApp"
+        android:allowBackup="false"
+        android:label="@string/app_name"
+        android:supportsRtl="true" />
+
+</manifest>
