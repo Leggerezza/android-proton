@@ -252,11 +252,14 @@ go vet ./...
 | A9 | 同一 DeviceName 不耗尽设备位 | ⏳ 只观察了证书复用，没有核对账号设备列表 | — |
 | A10 | OxygenOS 前台服务保活 | ❌ P4 | — |
 | A11 | FlClash PROCESS-NAME 命中 | ❌ P6 | — |
-| A12 | 16 KB 页运行时 | ❌ **无法验证**：测试设备 getconf PAGE_SIZE = 4096 | P1-E9 |
+| A12 | 16 KB 页运行时 | 🕓 **P2 结束后必测一次**（16 KB 系统镜像模拟器跑 APK + 自测），发布前（P7）再复跑；本机 OPD2514 是 4 KB 内核，测不了 | P1-E9、TEST-EVIDENCE「P2 后必测」 |
 | A13 | netstack 的 CloseWrite（half-close） | ❌ P2 | — |
 
-> 结论：P1 把 A1/A2/A4/A5/A7 从"假设"变成了"证据"，A6/A10/A11/A12/A13 仍必须在各自阶段消掉。
-> 其中 **A12 需要一台真正的 16 KB 页设备**，本地这台 OPD2514 不是。
+> 结论：P1 把 A1/A2/A4/A5/A7 从「假设」变成了「证据」，A6/A10/A11/A12/A13 仍必须在各自阶段消掉。
+> **A12 的处理（2026-11-18 决定）**：不等 P7 —— **P2 一结束就用 16 KB 系统镜像的模拟器测一次**，
+> 把结果写进 TEST-EVIDENCE；发布前（P7）在 `docs/RELEASE-CHECKLIST.md` 里再复跑一次作为发布门禁。
+> 本机 OPD2514 的 `getconf PAGE_SIZE` 是 4096（`pagesize.max=16384` 说明硬件支持，但当前是 4 KB 内核），
+> 所以不能用它来消 A12。
 
 ## 8. 风险登记
 

@@ -72,6 +72,7 @@ A pass prints `tunnel up in …ms` and an exit IP that is **not** your own.
 | `docs/PROTOCOL.md` | Verified Proton Stealth facts, frame format, Android re-verification |
 | `docs/P0-AUDIT.md` | Dependency audit of the Windows baseline → Android verdicts, assumptions A1–A13 |
 | `docs/TEST-EVIDENCE.md` | Per-phase commands and raw output (P0 + P1) |
+| `docs/RELEASE-CHECKLIST.md` | Mandatory release gates (16 KB runtime, signing, SBOM, secrets, CVE) |
 
 ## Known limitations (apply to the finished client, stated up front)
 

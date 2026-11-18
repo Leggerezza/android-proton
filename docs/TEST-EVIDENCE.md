@@ -746,6 +746,37 @@ Configuration cache entry reused.
 **仍未验证，不得当成结论**：A6（netstack UDP，P2）、A10（OxygenOS 保活，P4）、
 A11（FlClash PROCESS-NAME，P6）、A12（16 KB 运行时，需要 16 KB 页真机，P7）、A13（half-close，P2）。
 
+### P2 后必测：16 KB 页运行时（A12）
+
+> 这条**不是** P2 的功能验收项，但它必须在 P2 结束后立刻做一次，不能拖到发布前才想起。
+> 决定记录在 docs/P0-AUDIT.md §7.1；发布前的复跑写在 docs/RELEASE-CHECKLIST.md。
+
+为什么现在还不能关：静态对齐（A2，P1-E4/P1-E5）只证明 `libgojni.so` 的 LOAD 段是 `0x4000`、
+APK 能被打包器接受；它**不证明** Go runtime 与整条隧道在 16 KB 页内核上运行正常。
+
+做法（P2 结束时执行，结果追加到本节）：
+
+```bash
+# 1. 装一个 16 KB 系统镜像（Android 15/16 都提供 16 KB 变体）
+sdkmanager --install "system-images;android-36;google_apis;arm64-v8a"   # 名称以 sdkmanager --list 为准，
+                                                                        # 需要带 "16 KB"/"16k" 的那一条
+avdmanager create avd -n proton16k -k "system-images;android-36;google_apis;arm64-v8a" --device "pixel_tablet"
+emulator -avd proton16k -no-snapshot &
+
+# 2. 确认它真的跑在 16 KB 上（关键，不是看镜像名字）
+adb shell getconf PAGE_SIZE          # 期望 16384
+
+# 3. 装 APK 并跑 JNI 冒烟 + 隧道自测
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb shell am instrument -w io.github.dsh.protonnode.debug.test/androidx.test.runner.AndroidJUnitRunner
+# （或 ./gradlew :app:connectedDebugAndroidTest，ANDROID_SERIAL=emulator-5554）
+```
+
+判定：`getconf PAGE_SIZE` = 16384 且 instrumentation 通过、`Status()` 状态机走到
+`connected`（模拟器能出网时）。任一失败就是 P2 之后的第一个 bug，优先于 P3。
+
+状态：**NOT RUN**（P2 结束后执行）
+
 ## P2 — SOCKS5 TCP + UDP
 
 `NOT RUN`
