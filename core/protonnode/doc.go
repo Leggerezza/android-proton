@@ -1,12 +1,15 @@
-// Package protonnode is the Android-facing root of the Go core.
+// Package protonnode is the gomobile-facing Android core of the Proton node.
 //
-// P0 scope: the module exists so that `cd core && go test ./...` is a real,
-// runnable gate from the first commit. The gomobile contract from PROMPT.md
-// section 5.1 (Init/Login/Start/Stop/Status/...) is implemented in P1 on top of
-// the code audited in docs/P0-AUDIT.md; nothing is stubbed here on purpose,
-// because a stub that pretends to work is worse than an absent function.
+// P1 scope (PROMPT.md 5.1 subset): Init, Shutdown, Login, Logout, SetSession,
+// SessionJSON, SessionState, ListServers, Start, Stop, Status, RecentLogs.
+// Scanning (P3), config import/export (P5) and the foreground service (P4) are
+// added when their phase starts; absent functions are better than stubs.
 //
-// Build constraints for the ported code:
-//   - GOOS=android, GOARCH=arm64, CGO off (gomobile handles the cgo shim).
-//   - no os/exec, no console, no DPAPI, no wintun, no TUN device.
+// Rules that hold for every exported function:
+//   - only string/bool/error/int (gomobile cannot bind channels or complex
+//     types; structured data is JSON);
+//   - blocking calls take a context deadline and return in bounded time;
+//   - Status is safe from any thread and never blocks on the network;
+//   - the package writes no credentials to disk (the app encrypts SessionJSON
+//     itself with Android Keystore, see store.Store).
 package protonnode
