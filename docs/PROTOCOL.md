@@ -41,3 +41,24 @@ WireGuard handshake -> keepalive 25s -> MTU 1280..1320
 | TCP connect timeout | IP blackholed |
 | TLS ok, WG handshake timeout | key rejected or path throttled |
 | handshake ok, no data | MTU / routing inside the tunnel |
+
+## 5. Android 复验（2026-11-18，P1）
+
+同一份 Go 代码在 Windows（amd64）和 OnePlus Pad 4（android/arm64, API 36）上都跑通了真实隧道：
+
+| 事实 | Windows | Android 16 (OPD2514) |
+|---|---|---|
+| `api.protonmail.ch` 可达、HTTP/1.1 | ✅ | ✅ 2784 台逻辑服务器 |
+| SRP 会话 + token 刷新 | ✅ | ✅ 复用同一会话 + 证书 |
+| Stealth TLS（utls Chrome） | ✅ | ✅ SNI `gateway.icloud.com` / `connectivitycheck.gstatic.com` |
+| WireGuard 握手 | 1.75 s（首次）/ 250 ms（复用证书） | **251 ms** |
+| 隧道内 TCP | ✅ | ✅ `api.ipify.org` → `185.98.169.29` |
+| netstack UDP | ❌ | ❌（P2） |
+
+### 5.1 Android 上必须注意的两点
+
+1. **DNS**：Android 没有 `/etc/resolv.conf`，纯 Go 解析器会退回 `[::1]:53` 并失败。
+   APK 里 gomobile 产出的库是 cgo 构建（走 bionic 的 `getaddrinfo`），所以不受影响；
+   非 cgo 的调试二进制必须用 `-dns <server>` / `SetAPIDNS()` 固定解析器。
+2. **SNI**：与 Windows 相同，从 China-safe 池按入口 IP 轮转；真机上命中的是
+   `gateway.icloud.com` 与 `connectivitycheck.gstatic.com`，都不是国内 SNI 黑名单里的名字。

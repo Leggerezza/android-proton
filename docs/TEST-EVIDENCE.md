@@ -406,12 +406,345 @@ F:\Temp\clone-test\core> go test ./... -count=1
 
 ---
 
-## P1 — 真实隧道
+## P1 — 真实隧道（2026-11-18）
 
-`NOT RUN`（P0 只做审计与骨架；按 PROMPT §0.2 不得提前开始）
+### P1 判定
 
-预期要产出的证据：真机 `gomobile bind` 的 AAR 内容、`.so` 的 `readelf` LOAD 对齐、
-隧道内 `curl https://api.ipify.org` 的出口 IP、`Status()` JSON。
+| 判定项（PROMPT §11 / START-HERE §4） | 结果 | 证据 |
+|---|---|---|
+| 真实 WireGuard 握手（不是 TLS 握手成功） | ✅ Windows 250 ms；真机 251 ms | P1-E6 / P1-E7 |
+| 隧道内 1 个 TCP 请求成功 | ✅ 两端都拿到 Proton 出口 IP | P1-E6 / P1-E7 |
+| 真机（OnePlus Pad 4 / Android 16 / arm64） | ✅ 同一份 Go 代码跑通 | P1-E7 |
+| gomobile 能绑定 core（A1 前半） | ✅ AAR + classes.jar，14 个方法 | P1-E3 |
+| Go 的 .so 满足 16 KB 对齐（A2 前半） | ✅ 4 个 LOAD 段全部 0x4000 | P1-E4 |
+| 装进 APK 后仍满足 16 KB（A2 后半） | ✅ release/debug 两个 APK 都过 | P1-E5 |
+| JNI 桥在应用进程里真正加载（A1 后半） | ✅ 真机 instrumentation 1/1 通过 | P1-E8 |
+| SOCKS5 UDP（A6） | ❌ 未实现，P2 做 | P1-E9 |
+
+### P1-E1 环境
+
+# device (adb -s 10.241.100.148:41427)
+model: OPD2514
+manufacturer: OnePlus
+android release: 16
+sdk: 36
+abi: arm64-v8a
+build: OPD2514_16.0.8.301(EX01)
+PAGE_SIZE: 4096
+
+# host toolchain
+go: go version go1.27.4 windows/amd64
+ndk: Pkg.Desc = Android NDK | Pkg.Revision = 28.2.13676358 | Pkg.BaseRevision = 28.2.13676358 | Pkg.ReleaseName = r28c
+gomobile:  mod golang.org/x/mobile v0.0.0-20261117202452-47699113848a h1:jYIfLfiCY1/N6kWqBdUak4c1kMN0vKnoQypLZqbGqv4= |  dep golang.org/x/mod v0.43.0 h1:MFuq5J6s35W9D3IjkwyWc9vHh0nENOrt5K8Iof4ofmg=
+
+llvm-readelf: LLVM (http://llvm.org/):
+
+### P1-E2 core 的 vet 与测试
+
+```bash
+cd core
+go vet ./...
+go test ./... -count=1 -v
+```
+
+?   	github.com/dsh/android-proton/core/cmd/protonnode-cli	[no test files]
+?   	github.com/dsh/android-proton/core/proton	[no test files]
+=== RUN   TestGameModeDefaults
+--- PASS: TestGameModeDefaults (0.00s)
+=== RUN   TestGameModeRejectsSecureCore
+--- PASS: TestGameModeRejectsSecureCore (0.00s)
+=== RUN   TestNormalModeDefaultsAndValidation
+--- PASS: TestNormalModeDefaultsAndValidation (0.00s)
+=== RUN   TestSelectCandidatesPrefersOrderAndSkipsUnavailable
+--- PASS: TestSelectCandidatesPrefersOrderAndSkipsUnavailable (0.00s)
+=== RUN   TestRedactMasksEmailAndToken
+--- PASS: TestRedactMasksEmailAndToken (0.00s)
+=== RUN   TestRingLogKeepsNewest
+--- PASS: TestRingLogKeepsNewest (0.00s)
+PASS
+ok  	github.com/dsh/android-proton/core/protonnode	2.050s
+=== RUN   TestLoopbackAddrRejectsNonLoopback
+--- PASS: TestLoopbackAddrRejectsNonLoopback (0.00s)
+=== RUN   TestConnectRelay
+--- PASS: TestConnectRelay (0.00s)
+=== RUN   TestUDPAssociateIsRejected
+--- PASS: TestUDPAssociateIsRejected (0.00s)
+PASS
+ok  	github.com/dsh/android-proton/core/socks5	0.481s
+=== RUN   TestFrameRoundTrip
+--- PASS: TestFrameRoundTrip (0.00s)
+=== RUN   TestHandshakeFrameIsNormal
+--- PASS: TestHandshakeFrameIsNormal (0.00s)
+=== RUN   TestDecodeRejectsGarbage
+--- PASS: TestDecodeRejectsGarbage (0.00s)
+PASS
+ok  	github.com/dsh/android-proton/core/stealth	1.353s
+=== RUN   TestWriteJSONIsAtomicAndPrivate
+--- PASS: TestWriteJSONIsAtomicAndPrivate (0.01s)
+=== RUN   TestNewRejectsEmptyDir
+--- PASS: TestNewRejectsEmptyDir (0.00s)
+PASS
+ok  	github.com/dsh/android-proton/core/store	0.042s
+=== RUN   TestStealthTunnelEndToEnd
+    integration_test.go:132: handshake ok in 251ms (SNI fonts.gstatic.com)
+ERROR: srv: 2026/11/18 21:00:41 peer(iK5x…88ng) - Failed to send data packets: stealth(listen): write: write tcp 127.0.0.1:62063->127.0.0.1:62064: wsasend: An established connection was aborted by the software in your host machine.
+ERROR: srv: 2026/11/18 21:00:41 Bind close failed: tls: failed to send closeNotify alert (but connection was closed anyway): write tcp 127.0.0.1:62063->127.0.0.1:62064: wsasend: An established connection was aborted by the software in your host machine.
+--- PASS: TestStealthTunnelEndToEnd (0.69s)
+PASS
+ok  	github.com/dsh/android-proton/core/tunnel	2.021s
+
+[exit 0]
+
+> 15 个测试全 PASS。`TestStealthTunnelEndToEnd` 是原样搬过来的端到端测试
+> （TLS → WireGuard → gVisor netstack → SOCKS5 → HTTP）；新增的是配置默认值、选服顺序、
+> 日志脱敏、环形缓冲、SOCKS5 环回约束 / CONNECT 中继 / UDP 拒绝、store 原子写。
+>
+> `-race` 没有在本机跑：Go 的 race 检测需要 cgo 编译器，这台 Windows 没有 gcc/msvc。
+> CI（ubuntu）里的 `go test -race` 覆盖这一项。
+
+### P1-E3 gomobile AAR（A1 前半）
+
+```bash
+go get -tool golang.org/x/mobile/cmd/gobind      # gomobile 现在要求 tool 依赖
+go install golang.org/x/mobile/cmd/gomobile@latest
+gomobile init
+export ANDROID_NDK_HOME=<SDK>/ndk/28.2.13676358
+gomobile bind -target=android/arm64 -androidapi 26 -o core.aar ./protonnode
+```
+
+```
+
+[exit 0]
+```
+
+AAR 内容：
+
+```
+-rw-rw-r--  0 0      0         149 11月 30  1979 AndroidManifest.xml
+-rw-rw-r--  0 0      0          58 11月 30  1979 proguard.txt
+-rw-rw-r--  0 0      0       10147 11月 30  1979 classes.jar
+-rw-rw-r--  0 0      0    25008840 11月 30  1979 jni/arm64-v8a/libgojni.so
+-rw-rw-r--  0 0      0           0 11月 30  1979 R.txt
+drwxrwxr-x  0 0      0           0 11月 30  1979 res/
+
+[exit 0]
+```
+
+生成的 Java 面（javap）：
+
+```
+Compiled from "Protonnode.java"
+public abstract class protonnode.Protonnode {
+  public static void touch();
+  public static native void init(java.lang.String) throws java.lang.Exception;
+  public static native java.lang.String listServers(java.lang.String, boolean) throws java.lang.Exception;
+  public static native java.lang.String login(java.lang.String, java.lang.String, java.lang.String) throws java.lang.Exception;
+  public static native void logout() throws java.lang.Exception;
+  public static native java.lang.String recentLogs(long);
+  public static native java.lang.String sessionJSON() throws java.lang.Exception;
+  public static native java.lang.String sessionState();
+  public static native void setAPIDNS(java.lang.String) throws java.lang.Exception;
+  public static native void setSession(java.lang.String) throws java.lang.Exception;
+  public static native void shutdown();
+  public static native java.lang.String start(java.lang.String) throws java.lang.Exception;
+  public static native java.lang.String status();
+  public static native void stop() throws java.lang.Exception;
+  static {};
+}
+
+[exit 0]
+```
+
+> 参数/返回值只有 `String`、`boolean`、`long`、`void`，`error` 变成 Java 异常，
+> 完全落在 PROMPT §5.1 的 gomobile 约束内。导出的错误哨兵值已改成包内变量，
+> 免得 gomobile 为它们生成 `setErr…/getErr…` 这种没有意义的 setter。
+
+### P1-E4 .so 的 16 KB 对齐（A2 前半）
+
+```bash
+tar -xf core.aar
+llvm-readelf -lW jni/arm64-v8a/libgojni.so
+```
+
+```
+  LOAD           0x000000 0x0000000000000000 0x0000000000000000 0x5bd730 0x5bd730 R   0x4000
+  LOAD           0x5bd730 0x00000000005c1730 0x00000000005c1730 0x488f90 0x488f90 R E 0x4000
+  LOAD           0xa466c0 0x0000000000a4e6c0 0x0000000000a4e6c0 0x155fd8 0x156940 RW  0x4000
+  LOAD           0xb9c6a0 0x0000000000ba86a0 0x0000000000ba86a0 0x08ed20 0x20df088 RW  0x4000
+[exit 0]
+```
+
+### P1-E5 APK 的 16 KB 门（A2 后半，这次真的带 .so）
+
+```bash
+./gradlew clean :app:assembleDebug :app:assembleRelease     # AAR 经 app/libs/core.aar 进入 APK
+bash scripts/check-16kb.sh app/build/outputs/apk/release/app-release-unsigned.apk
+bash scripts/check-16kb.sh app/build/outputs/apk/debug/app-debug.apk
+zipalign -c -P 16 -v 4 app/build/outputs/apk/release/app-release-unsigned.apk
+```
+
+```
+checking app/build/outputs/apk/release/app-release-unsigned.apk
+checking /tmp/tmp.BErSDCg3dP/lib/arm64-v8a/libgojni.so
+  LOAD segments: 0x4000 0x4000 0x4000 0x4000 
+zipalign 16KB: OK
+16 KB check passed
+
+[exit 0]
+```
+
+```
+checking app/build/outputs/apk/debug/app-debug.apk
+checking /tmp/tmp.w5iUlUVpsp/lib/arm64-v8a/libgojni.so
+  LOAD segments: 0x4000 0x4000 0x4000 0x4000 
+zipalign 16KB: OK
+16 KB check passed
+
+[exit 0]
+```
+
+```
+Verification successful
+[exit 0]
+```
+
+> 顺带修掉脚本里的一个**假阴性**：Info-ZIP 6.00（Git Bash）不展开 `lib/*` 这个模式，
+> 旧版脚本会静默地"没找到 .so"，打印 `skipping alignment check` 然后 **PASS**。
+> 现在按 `unzip -l` 列出的精确条目名逐个解包，解不出来就 FAIL。这个 bug 在 P0 的
+> 纯 Java APK 上看不出来，接进 AAR 之后才暴露。
+
+### P1-E6 Windows 上的真实 Proton 隧道
+
+真实账号（复用 Windows 侧已验证的会话），自动选服 + L1 探测 + 证书复用 + 真实握手 + SOCKS5：
+
+```powershell
+protonnode-cli selftest -state session.json -cfg cfg -socks 11082 -mode normal -wait 120s
+```
+
+```
+session: {"loggedIn":true,"uid":"umllpq6w…","email":"ch***@outlook.com","deviceName":"proton-stealth-LAPTOP-HAI0E0DS","certSerial":"18560510771","certExpiresAt":"2026-11-23T20:15:36+08:00","sessionDirty":false}
+connected after 24.524s
+status: {"state":"connected","server":"US-CA#834","entryIP":"79.127.185.162","sni":"connectivitycheck.gstatic.com","handshakeMs":251,"rxBytes":92,"txBytes":180,"pid":34752,"udp":false,"socksPort":11082,"mode":"normal","reconnects":0}
+in-tunnel GET http://api.ipify.org/ -> 185.98.169.29
+status: {"state":"connected","server":"US-CA#834","entryIP":"79.127.185.162","sni":"connectivitycheck.gstatic.com","handshakeMs":251,"uptimeSec":1,"rxBytes":972,"txBytes":916,"pid":34752,"udp":false,"socksPort":11082,"mode":"normal","reconnects":0}
+--- logs ---
+21:00:46.453 core: initialized (dir F:\Temp\p1\cfg-win2)
+21:00:46.511 session: loaded for device prot…(30) (uid umllpq6w…)
+21:00:46.511 start: mode normal, socks 127.0.0.1:11082, mtu 1320, fingerprint chrome
+21:00:46.511 GET https://api.protonmail.ch/vpn/v1/logicals?SecureCoreFilter=all&WithState=true
+21:00:49.875 servers: 2784 logical servers from the API
+21:00:53.876 entry 79.127.185.162 (US-CA#834) reachable
+21:00:57.877 entry 95.173.221.92 (US-CO#156) reachable
+21:01:09.880 entry 212.102.44.166 (US-CO#54) reachable
+21:01:09.883 certificate: reusing serial 18560510771 (expires 2026-11-23T20:15:36+08:00)
+21:01:09.883 server 1/3: US-CA#834 (US, San Jose) entry 79.127.185.162 load 37% secure-core=false
+21:01:10.089 stealth: tcp connected to 79.127.185.162:443
+21:01:10.089 stealth: certificate verification is skipped for the Proton entry (rotating cert; PROMPT.md 0.4)
+21:01:10.295 stealth: TLS established with 79.127.185.162:443 (sni connectivitycheck.gstatic.com)
+21:01:10.649 tunnel up in 251ms (sni connectivitycheck.gstatic.com)
+21:01:10.649 SOCKS5 listening on 127.0.0.1:11082 (TCP CONNECT only in P1)
+21:01:10.650 socks5: listening on 127.0.0.1:11082
+21:01:11.456 socks5: CONNECT tunnel established
+ERROR: wg: 2026/11/18 21:01:11 peer(2RxT…WmDA) - Failed to send data packets: use of closed network connection
+stopped: {"state":"idle","rxBytes":0,"txBytes":0,"pid":34752,"udp":false,"mode":"normal","reconnects":0}
+
+[exit 0]
+```
+
+### P1-E7 真机上的真实 Proton 隧道（OnePlus Pad 4）
+
+同一份 core 交叉编译成 `android/arm64`，`adb push` 到 /data/local/tmp 执行。这不是 APK 形态，
+而是"Go 核心在 Android 上能不能真的建隧道"的最小验证；APK 形态由 P1-E8 覆盖：
+
+```bash
+go build -trimpath -ldflags "-s -w" -o protonnode-cli-android ./cmd/protonnode-cli   # GOOS=android GOARCH=arm64
+adb push protonnode-cli-android /data/local/tmp/p1/protonnode-cli
+adb shell /data/local/tmp/p1/protonnode-cli selftest -state /data/local/tmp/p1/session.json \
+    -cfg /data/local/tmp/p1/cfg2 -socks 11080 -dns 172.26.26.3 -mode normal -wait 120s
+```
+
+```
+session: {"loggedIn":true,"uid":"umllpq6w…","email":"ch***@outlook.com","deviceName":"proton-stealth-LAPTOP-HAI0E0DS","certSerial":"18560510771","certExpiresAt":"2026-11-23T12:15:36Z","sessionDirty":false}
+connected after 8.526s
+status: {"state":"connected","server":"US-CA#838","entryIP":"79.127.185.162","sni":"connectivitycheck.gstatic.com","handshakeMs":251,"rxBytes":92,"txBytes":180,"pid":26195,"udp":false,"socksPort":11080,"mode":"normal","reconnects":0}
+in-tunnel GET http://api.ipify.org/ -> 185.98.169.29
+status: {"state":"connected","server":"US-CA#838","entryIP":"79.127.185.162","sni":"connectivitycheck.gstatic.com","handshakeMs":251,"uptimeSec":1,"rxBytes":4828,"txBytes":4972,"pid":26195,"udp":false,"socksPort":11080,"mode":"normal","reconnects":0}
+--- logs ---
+13:01:19.280 core: initialized (dir /data/local/tmp/p1/cfg2)
+13:01:19.280 api: client rebuilt (dns "172.26.26.3")
+13:01:19.280 session: loaded for device prot…(30) (uid umllpq6w…)
+13:01:19.281 start: mode normal, socks 127.0.0.1:11080, mtu 1320, fingerprint chrome
+13:01:19.281 GET https://api.protonmail.ch/vpn/v1/logicals?SecureCoreFilter=all&WithState=true
+13:01:22.500 servers: 2784 logical servers from the API
+13:01:26.502 entry 79.127.185.162 (US-CA#838) reachable
+13:01:26.502 entry 212.102.44.166 (US-CO#58) reachable
+13:01:26.502 entry 79.127.136.65 (US-IL#354) reachable
+13:01:26.508 certificate: reusing serial 18560510771 (expires 2026-11-23T12:15:36Z)
+13:01:26.508 server 1/3: US-CA#838 (US, San Jose) entry 79.127.185.162 load 29% secure-core=false
+13:01:26.745 stealth: tcp connected to 79.127.185.162:443
+13:01:26.745 stealth: certificate verification is skipped for the Proton entry (rotating cert; PROMPT.md 0.4)
+13:01:26.973 stealth: TLS established with 79.127.185.162:443 (sni connectivitycheck.gstatic.com)
+13:01:27.327 tunnel up in 251ms (sni connectivitycheck.gstatic.com)
+13:01:27.327 SOCKS5 listening on 127.0.0.1:11080 (TCP CONNECT only in P1)
+13:01:27.327 socks5: listening on 127.0.0.1:11080
+13:01:28.297 socks5: CONNECT tunnel established
+stopped: {"state":"idle","rxBytes":0,"txBytes":0,"pid":26195,"udp":false,"mode":"normal","reconnects":0}
+
+[exit 0]
+```
+
+> 会话文件在测试后立刻从设备删除（`rm -f /data/local/tmp/p1/session.json`），设备上只留下
+> `prefs.json` 与 `servers.json`（非机密）。
+
+### P1-E8 真机 JNI 冒烟：Go 运行时在应用进程里加载
+
+```bash
+./gradlew :app:connectedDebugAndroidTest        # ANDROID_SERIAL=<device>
+```
+
+```
+[... 80 lines omitted ...]
+Running tests on devices: OPD2514 - 16
+
+
+BUILD SUCCESSFUL in 17s
+68 actionable tasks: 14 executed, 18 from cache, 36 up-to-date
+Configuration cache entry reused.
+
+[exit 0]
+```
+
+```xml
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuites tests="1" failures="0" errors="0" skipped="0" time="0.000" timestamp="2026-11-18T13:05:24" hostname="localhost">
+  <testsuite name="io.github.dsh.protonnode.CoreBridgeTest" tests="1" failures="0" errors="0" skipped="0" time="0.014" timestamp="2026-11-18T13:05:24" hostname="localhost">
+    <properties>
+      <property name="device" value="10.241.100.148_41427" />
+    </properties>
+    <testcase name="initStatusAndShutdownWork" classname="io.github.dsh.protonnode.CoreBridgeTest" time="0.014" />
+  </testsuite>
+</testsuites>
+```
+
+> 测试内容：`Protonnode.init(filesDir/core)` → `status()` 是 idle 的 JSON → `recentLogs()`
+> 含 "initialized" → `sessionState()` 是 JSON → `shutdown()`。它证明 A1 的后半句：
+> **gomobile 生成的 JNI 桥能在 Android 16 应用进程里加载 Go 运行时**
+> （utls + wireguard-go + gVisor netstack 全部被链接进来）并正常调用。
+
+### P1-E9 发现与仍未验证的项
+
+| # | 发现 | 影响 / 处理 |
+|---|---|---|
+| 1 | Android 上**纯 Go 的 DNS 解析器不可用**：没有 /etc/resolv.conf，Go 退回 [::1]:53，报 connection refused | 新增 `SetAPIDNS()` 与 CLI 的 `-dns`（把 API 解析固定到 172.26.26.3）。APK 里不走这条路：gomobile 的库是 cgo 构建，走 bionic 的 getaddrinfo，系统 DNS 正常 |
+| 2 | 设备 `getconf PAGE_SIZE` = **4096** | 这台不是 16 KB 页设备，A12（16 KB 运行时）仍未验证；静态对齐（A2）已由 readelf/zipalign 证明 |
+| 3 | 冷启动首次连接 20–25 s（L1 逐个探入口 IP，每批 12 个） | 有服务器缓存与证书后降到 3.5 s；P3 的三级扫描会重新设计这段并给耗时基线 |
+| 4 | `servers.json` 缓存 2784 台服务器约 1.7 MB | 可接受；P3 改成只存筛选所需字段 |
+| 5 | SOCKS5 不再打印目标域名（P0 审计发现的隐私问题已修） | 现在只有 `socks5: CONNECT tunnel established` 和应答码 |
+| 6 | `gomobile bind` 要求模块里有 `tool golang.org/x/mobile/cmd/gobind` | go.mod 因此把 go 指令升到 1.26.0、并升级了 x/crypto 等；新版本就是当前锁定版本，go.sum 已提交 |
+| 7 | 设备上存在 vgate0 接口（疑似 FlClash/VPN） | 不影响 P1（CLI 直连入口 IP）；P6 专门验证 mihomo 的进程/UID 规则 |
+
+**仍未验证，不得当成结论**：A6（netstack UDP，P2）、A10（OxygenOS 保活，P4）、
+A11（FlClash PROCESS-NAME，P6）、A12（16 KB 运行时，需要 16 KB 页真机，P7）、A13（half-close，P2）。
 
 ## P2 — SOCKS5 TCP + UDP
 

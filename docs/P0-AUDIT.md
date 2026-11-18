@@ -237,6 +237,27 @@ go vet ./...
 
 ---
 
+### 7.1 P1 复验结果（2026-11-18，真实账号 + 真机）
+
+| # | 假设 | 状态 | 证据 |
+|---|---|---|---|
+| A1 | gomobile 能绑定 core | ✅ **已验证**：bind 出 AAR，真机 instrumentation 里 JNI 加载并调用成功 | TEST-EVIDENCE P1-E3 / P1-E8 |
+| A2 | Go 的 .so 满足 16 KB 对齐 | ✅ **已验证**：4 个 LOAD 段全 0x4000，且 release/debug APK 的 16 KB 门通过 | P1-E4 / P1-E5 |
+| A3 | netstack 吞吐/CPU 可接受 | ⏳ 只证明了功能可用，没有吞吐基线（P1 不做性能验收） | P1-E7 |
+| A4 | utls Chrome 指纹 + China-safe SNI 在国内网络可握手 | ✅ **已验证**：真机 TLS + WG 握手 251 ms（SNI gateway.icloud.com / connectivitycheck.gstatic.com） | P1-E7 |
+| A5 | 隧道内 DNS 10.2.0.1 能解析 | ✅ 间接验证：隧道内 GET api.ipify.org（域名）返回出口 IP | P1-E7 |
+| A6 | netstack UDP 可用 | ❌ 未开始，P2 从零做 | — |
+| A7 | api.protonmail.ch 的 HTTP/1.1-only 行为在 Android 一致 | ✅ **已验证**：真机拉到 2784 台逻辑服务器 | P1-E7 |
+| A8 | needs2FA 的 scope 判定 | ⏳ 未用开 2FA 的账号验证（P1 复用了已有会话） | — |
+| A9 | 同一 DeviceName 不耗尽设备位 | ⏳ 只观察了证书复用，没有核对账号设备列表 | — |
+| A10 | OxygenOS 前台服务保活 | ❌ P4 | — |
+| A11 | FlClash PROCESS-NAME 命中 | ❌ P6 | — |
+| A12 | 16 KB 页运行时 | ❌ **无法验证**：测试设备 getconf PAGE_SIZE = 4096 | P1-E9 |
+| A13 | netstack 的 CloseWrite（half-close） | ❌ P2 | — |
+
+> 结论：P1 把 A1/A2/A4/A5/A7 从"假设"变成了"证据"，A6/A10/A11/A12/A13 仍必须在各自阶段消掉。
+> 其中 **A12 需要一台真正的 16 KB 页设备**，本地这台 OPD2514 不是。
+
 ## 8. 风险登记
 
 | 风险 | 影响 | 缓解 | 阶段 |
