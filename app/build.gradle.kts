@@ -28,6 +28,8 @@ val keystoreProperties =
 android {
     namespace = "io.github.dsh.protonnode"
     compileSdk = 36
+    // Pinned to the NDK that produced the P1 evidence (r28c, 16 KB ready).
+    ndkVersion = "28.2.13676358"
 
     defaultConfig {
         applicationId = "io.github.dsh.protonnode"
@@ -35,6 +37,8 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // 16 KB page devices (PROMPT.md section 6.1): one ABI only.
         ndk {
@@ -86,4 +90,20 @@ android {
         abortOnError = true
         checkDependencies = true
     }
+}
+
+dependencies {
+    // The Go core, bound with gomobile (scripts/build-core-aar.sh). It is a
+    // build artifact, not source: a fresh checkout has no AAR until the script
+    // runs, so the dependency is conditional and the app still assembles.
+    val coreAar = file("libs/core.aar")
+    if (coreAar.exists()) {
+        implementation(files(coreAar))
+    }
+
+    // Instrumentation smoke test: proves the gomobile bridge actually loads and
+    // runs the Go runtime inside an app process on a device ("A1" in
+    // docs/P0-AUDIT.md). No UI is involved.
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.1")
 }

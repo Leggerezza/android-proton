@@ -14,12 +14,27 @@ echo "checking $apk"
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
-unzip -q "$apk" 'lib/*' -d "$tmp" || true
 
-mapfile -t sos < <(find "$tmp/lib" -name '*.so' 2>/dev/null)
-if [ "${#sos[@]}" -eq 0 ]; then
-  echo "no .so in APK (pure-Java build?) - skipping alignment check"
+# Extract every .so by its exact entry name: Info-ZIP 6.00 (Git Bash) does not
+# expand the "lib/*" pattern on Windows paths, and a silent miss here used to
+# print "no .so" and pass — the exact false negative this script exists to
+# prevent.
+mapfile -t entries < <(unzip -l "$apk" 2>/dev/null | awk '$NF ~ /^lib\/.*\.so$/ {print $NF}')
+if [ "${#entries[@]}" -eq 0 ]; then
+  if unzip -l "$apk" 2>/dev/null | grep -q ' lib/'; then
+    echo "FAIL: the APK has lib/ entries but no .so could be listed" >&2
+    exit 1
+  fi
+  echo "no lib/ entries in APK (pure-Java build?) - skipping alignment check"
 else
+  for e in "${entries[@]}"; do
+    unzip -o -q "$apk" "$e" -d "$tmp" || { echo "FAIL: cannot extract $e from $apk" >&2; exit 1; }
+  done
+  mapfile -t sos < <(find "$tmp/lib" -name '*.so' 2>/dev/null)
+  if [ "${#sos[@]}" -ne "${#entries[@]}" ]; then
+    echo "FAIL: extracted ${#sos[@]} of ${#entries[@]} libraries" >&2
+    exit 1
+  fi
   for so in "${sos[@]}"; do
     echo "checking $so"
     if command -v llvm-readelf >/dev/null; then readelf=llvm-readelf; else readelf=readelf; fi
@@ -28,6 +43,7 @@ else
       echo "  FAIL: non-16KB LOAD alignment: $bad" >&2
       exit 1
     fi
+    echo "  LOAD segments: $("$readelf" -lW "$so" | awk '$1=="LOAD"{printf "%s ", $NF}')"
   done
 fi
 

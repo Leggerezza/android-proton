@@ -22,7 +22,7 @@ jobs:
         with: { go-version: '1.27.4' }
 
       - name: Go vet + tests
-        run: cd core && go vet ./... && go test ./... -count=1
+        run: cd core && go vet ./... && go test ./... -count=1 -race
 
       - name: Android unit tests
         run: ./gradlew :app:testDebugUnitTest --stacktrace
