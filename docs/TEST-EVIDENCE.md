@@ -361,7 +361,38 @@ Verification successful
 
 > 首个提交（`a1d9fef`）缺 `CODE_OF_CONDUCT.md`、`docs/P0-AUDIT.md`、`docs/TEST-EVIDENCE.md`，本次 P0 全部补齐。
 
-### P0-E10 未执行项（NOT RUN）
+### P0-E10 全新克隆构建（证明提交树自洽）
+
+CI 的第一步是 `actions/checkout`，所以“提交树能不能独立构建”必须单独证明：克隆到空目录、
+没有 `local.properties`（CI 用 `ANDROID_HOME`）、直接构建。
+
+```bash
+git clone --branch feat/p0-skeleton . F:\Temp\clone-test
+cd F:\Temp\clone-test
+git ls-files -s gradlew          # 可执行位必须进 git
+./gradlew assembleDebug
+cd core && go test ./... -count=1
+```
+
+```
+F:\Temp> git clone --branch feat/p0-skeleton <repo> F:\Temp\clone-test
+F:\Temp\clone-test> git ls-files -s gradlew
+100755 249efbb032ce46a80c687c0723eb172e85f6a136 0	gradlew
+F:\Temp\clone-test> .\gradlew.bat assembleDebug --console=plain   (ANDROID_HOME set, no local.properties)
+> Task :app:packageDebug
+> Task :app:assembleDebug
+BUILD SUCCESSFUL in 9s
+35 actionable tasks: 35 executed
+
+apk: app/build/outputs/apk/debug/app-debug.apk = 871846 bytes
+F:\Temp\clone-test\core> go test ./... -count=1
+?   github.com/dsh/android-proton/core/protonnode  [no test files]
+[exit 0]
+```
+
+> 克隆后没有任何配置就能 `assembleDebug`，产出的 APK 与工作区构建的字节数一致（871,846）；
+> `gradlew` 的 `100755` 位已连同内容一起提交。
+### P0-E11 未执行项（NOT RUN）
 
 | 项 | 原因 | 谁来消除 |
 |---|---|---|
