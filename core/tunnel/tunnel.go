@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
+	"strconv"
 	"strings"
 	"time"
 
@@ -199,6 +200,53 @@ func (t *Tunnel) DialContext(ctx context.Context, network, address string) (net.
 // DialTCPAddrPort is the netip-typed variant.
 func (t *Tunnel) DialTCPAddrPort(ctx context.Context, addr netip.AddrPort) (net.Conn, error) {
 	return t.net.DialContext(ctx, "tcp", addr.String())
+}
+
+// ResolveHost resolves host inside the tunnel, using the tunnel's DNS server
+// (10.2.0.1). Nothing is resolved on the host, so no plaintext lookup leaks.
+func (t *Tunnel) ResolveHost(ctx context.Context, host string) ([]netip.Addr, error) {
+	addrs, err := t.net.LookupContextHost(ctx, host)
+	if err != nil {
+		return nil, fmt.Errorf("tunnel: resolve %q: %w", host, err)
+	}
+	out := make([]netip.Addr, 0, len(addrs))
+	for _, a := range addrs {
+		if ip, err := netip.ParseAddr(a); err == nil {
+			out = append(out, ip)
+		}
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("tunnel: resolve %q: no usable address", host)
+	}
+	return out, nil
+}
+
+// DialUDP opens a UDP socket inside the tunnel, connected to address
+// ("host:port" or "ip:port"). Domain names are resolved inside the tunnel with
+// a 5s budget (PROMPT.md 5.4.5), so the SOCKS5 UDP relay never leaks a DNS
+// query to the local network.
+func (t *Tunnel) DialUDP(ctx context.Context, address string) (net.Conn, error) {
+	host, portStr, err := net.SplitHostPort(address)
+	if err != nil {
+		return nil, fmt.Errorf("tunnel: bad UDP address %q: %w", address, err)
+	}
+	port, err := strconv.Atoi(portStr)
+	if err != nil || port <= 0 || port > 65535 {
+		return nil, fmt.Errorf("tunnel: bad UDP port %q", portStr)
+	}
+	var ip netip.Addr
+	if parsed, err := netip.ParseAddr(host); err == nil {
+		ip = parsed
+	} else {
+		rctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		addrs, err := t.ResolveHost(rctx, host)
+		if err != nil {
+			return nil, err
+		}
+		ip = addrs[0]
+	}
+	return t.net.DialUDPAddrPort(netip.AddrPort{}, netip.AddrPortFrom(ip, uint16(port)))
 }
 
 // Close tears everything down.

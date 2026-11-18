@@ -426,13 +426,18 @@ func (e *engine) serve(ctx context.Context, run *runState) error {
 		Dial: func(dctx context.Context, network, address string) (net.Conn, error) {
 			return tun.DialContext(dctx, network, address)
 		},
+		// UDP ASSOCIATE is served through the same tunnel: the dst domain is
+		// resolved by 10.2.0.1, never on the host (PROMPT.md 5.4 / 5.6).
+		DialUDP: func(dctx context.Context, address string) (net.Conn, error) {
+			return tun.DialUDP(dctx, address)
+		},
 		Logf: e.logfOrNil,
 	}
 	run.mu.Lock()
 	run.socks = srv
 	run.socksAddr = addr
 	run.mu.Unlock()
-	e.logfOrNil("SOCKS5 listening on %s (TCP CONNECT only in P1)", addr)
+	e.logfOrNil("SOCKS5 listening on %s (TCP CONNECT + UDP ASSOCIATE)", addr)
 
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()

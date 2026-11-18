@@ -34,7 +34,7 @@ func Status() string {
 		State:     eng.state,
 		LastError: eng.lastError,
 		PID:       pid(),
-		UDP:       false, // P1: SOCKS5 is TCP-only; P2 flips this to true
+		UDP:       true, // P2: UDP ASSOCIATE is served (see socks5/udp.go)
 		Plan:      eng.plan,
 		Tier:      eng.tier,
 		Mode:      eng.runCfg.Mode,

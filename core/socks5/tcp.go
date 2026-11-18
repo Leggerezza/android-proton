@@ -1,9 +1,8 @@
 // Package socks5 implements the SOCKS5 server the node exposes to mihomo /
 // FlClash.
 //
-// P1 scope: TCP CONNECT only (RFC 1928 CMD=0x01, no authentication). UDP
-// ASSOCIATE (CMD=0x03) is the P2 deliverable (PROMPT.md 5.4) and is answered
-// with REP=0x07 until then, exactly like the Windows baseline.
+// P2 scope: TCP CONNECT (RFC 1928 CMD=0x01) and UDP ASSOCIATE (CMD=0x03, see
+// udp.go). No authentication; the listener is loopback-only.
 //
 // The listener is loopback-only by construction: the node must never become a
 // public proxy.
@@ -61,6 +60,13 @@ type Server struct {
 	// MaxConns caps concurrent client connections (PROMPT.md 5.3: 512).
 	// Zero means 512.
 	MaxConns int
+	// DialUDP opens UDP sockets through the tunnel for UDP ASSOCIATE.
+	// Nil disables UDP (the command is then answered with 0x07).
+	DialUDP UDPDialFunc
+	// UDPIdleTimeout recycles an idle (association, dst) socket (default 120s).
+	UDPIdleTimeout time.Duration
+	// UDPMaxSessions caps the dst -> socket map per association (default 64).
+	UDPMaxSessions int
 
 	limiter chan struct{}
 }
@@ -154,9 +160,15 @@ func (s *Server) handle(ctx context.Context, c net.Conn) {
 		s.Logf("socks5: bad request from %s: %v", c.RemoteAddr(), err)
 		return
 	}
-	if cmd != cmdConnect {
+	switch cmd {
+	case cmdConnect:
+		// handled below
+	case cmdUDPAssociate:
+		s.handleUDPAssociate(ctx, c)
+		return
+	default:
 		_ = writeReply(c, repCommandUnsupported, nil)
-		s.Logf("socks5: unsupported command %#x for %s (UDP ASSOCIATE is not implemented)", cmd, target)
+		s.Logf("socks5: unsupported command %#x", cmd)
 		return
 	}
 
@@ -257,9 +269,15 @@ func writeReply(c net.Conn, rep byte, bound net.Addr) error {
 	buf := []byte{version5, rep, 0x00}
 	var ip net.IP
 	var port int
-	if tcp, ok := bound.(*net.TCPAddr); ok && tcp != nil {
-		ip = tcp.IP
-		port = tcp.Port
+	switch a := bound.(type) {
+	case *net.TCPAddr:
+		if a != nil {
+			ip, port = a.IP, a.Port
+		}
+	case *net.UDPAddr:
+		if a != nil {
+			ip, port = a.IP, a.Port
+		}
 	}
 	if ip4 := ip.To4(); ip4 != nil {
 		buf = append(buf, atypIPv4)
