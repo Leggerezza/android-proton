@@ -743,6 +743,38 @@ Configuration cache entry reused.
 | 6 | `gomobile bind` 要求模块里有 `tool golang.org/x/mobile/cmd/gobind` | go.mod 因此把 go 指令升到 1.26.0、并升级了 x/crypto 等；新版本就是当前锁定版本，go.sum 已提交 |
 | 7 | 设备上存在 vgate0 接口（疑似 FlClash/VPN） | 不影响 P1（CLI 直连入口 IP）；P6 专门验证 mihomo 的进程/UID 规则 |
 
+
+#### 第二次尝试（2026-11-19）—— 换成官方工具链，仍然卡在同一个地方
+
+这一轮把"镜像/AVD 是手工造的"这个变量排除掉：
+
+- 用 `sdkmanager` 重新安装镜像（下载 1.7 GB + 解包 4.3 GB 全量成功，`package.xml` 由 sdkmanager 生成）；
+- 用 `avdmanager create avd -n p16k -k "system-images;android-36;google_apis_ps16k;x86_64" -d pixel_tablet` 建 AVD
+  （配置里 `tag.id=page_size_16kb`、`image.sysdir.1` 正确）；
+- 逐一试过启动参数：WHPX 加速 / `-accel off` 纯 TCG / `-gpu off` / `-gpu swiftshader_indirect -feature -Vulkan` / 关 Wi-Fi netsim。
+
+```
+emulator-5556  offline           (WHPX, -gpu off)        8 min, guest 无任何 kernel 输出
+emulator-5556  offline           (WHPX, -gpu swiftshader) 4 min
+backend 未启动                    (-gpu swiftshader_indirect -feature -Vulkan)
+日志: Warning: in-guest renderer 不支持 -> 回退 lavapipe
+日志: Failed to load ...\lib64\vulkan\vulkan-1.dll
+```
+
+判定：**A12 仍未验证，且卡在宿主环境**。代码侧证据不变（P1-E4/E5：4 个 LOAD 段 0x4000、两个 APK 过 16 KB 门）；
+缺的是"在一个 16 KB 内核上真的把 APK 跑起来"。本机模拟器不管用哪种加速/渲染组合，guest 都到不了 adbd。
+
+已经把完整流程写成一条命令（可复现、可交接）：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-16kb-emulator.ps1
+```
+
+脚本会：确认镜像/AVD（缺则创建）→ 启模拟器 → 等 `sys.boot_completed` → **校验 `getconf PAGE_SIZE`=16384**
+→ 装 `app-debug.apk` 与测试 APK → 跑 `am instrument` → 打印 PASS/FAIL。任何一步不满足就非零退出。
+
+还差的那一步只可能来自：**交互式桌面会话**（本代理进程不在前台桌面会话里，这很可能是 guest 起不来的原因），
+或者另一台机器 / 一台 16 KB 页真机。
 **仍未验证，不得当成结论**：A6（netstack UDP，P2）、A10（OxygenOS 保活，P4）、
 A11（FlClash PROCESS-NAME，P6）、A12（16 KB 运行时，需要 16 KB 页真机，P7）、A13（half-close，P2）。
 

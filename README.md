@@ -38,6 +38,10 @@ scripts/build-core-aar.sh                 # -> app/libs/core.aar (git-ignored)
 ./gradlew :app:ktlintCheck :app:lintDebug :app:testDebugUnitTest
 ./gradlew :app:connectedDebugAndroidTest   # JNI smoke test, needs a device
 
+# 16 KB page-size runtime (A12): boots the 16 KB emulator image and runs the
+# instrumentation test on it; run from an interactive desktop session.
+powershell -File scripts/verify-16kb-emulator.ps1
+
 # 4. Release APK + 16 KB gate (checks every .so in the APK)
 ./gradlew :app:assembleRelease
 bash scripts/check-16kb.sh app/build/outputs/apk/release/app-release-unsigned.apk
