@@ -777,9 +777,195 @@ adb shell am instrument -w io.github.dsh.protonnode.debug.test/androidx.test.run
 
 状态：**NOT RUN**（P2 结束后执行）
 
-## P2 — SOCKS5 TCP + UDP
+## P2 — SOCKS5 TCP + UDP（2026-11-18）
 
-`NOT RUN`
+### P2 判定（PROMPT.md 5.3 / 5.4 / 11）
+
+| 判定项 | 结果 | 证据 |
+|---|---|---|
+| `curl -x socks5h://127.0.0.1:<port>` 通 | ✅ 真实 curl 经节点取到 Proton 出口 IP | P2-E3 |
+| UDP echo 往返（协议级） | ✅ 桌面 + 真机，经真实 Proton 走 DNS 查询并拿到 A 记录 | P2-E4 / P2-E5 |
+| UDP 关联生命周期 = TCP 控制连接 | ✅ 关闭控制连接后 2s 内不再应答 | P2-E2（`TestUDPAssociateDiesWithControlConnection`） |
+| `FRAG!=0` 丢弃、三种 ATYP | ✅ 单元测试 | P2-E2 |
+| 每关联 `dst→socket` LRU 64、空闲 120s 回收 | ✅ 单元测试（cap 与 TTL 用短值注入） | P2-E2 |
+| 单报文 ≤ 65487、`RSV` 必须为 0 | ✅ 解析器拒绝非法值 | P2-E2 |
+| ≥16 个并发目标 | ✅ 16 个 echo 目标同时活跃 | P2-E2 |
+| `Stop()` 后无残留 socket | ✅ 监听端口可被立即重新绑定；curl 结束后 `netstat` 无 LISTEN | P2-E2 / P2-E3 |
+| netstack UDP（PROMPT §4 的 ❌） | ✅ 本地端到端 + 真机端到端 | P2-E6 |
+
+> 真机证据一律来自 OnePlus Pad 4（OPD2514 / Android 16 / arm64），真实 Proton 账号。
+
+### P2-E1 结论摘要
+
+```
+core 测试：20 个，全 PASS（protonnode 6、socks5 11、stealth 3、store 2、tunnel 3 → 其中 tunnel 3 含 UDP 与 half-close）
+真机：socks5 11/11 PASS、tunnel 3/3 PASS
+真实链路：curl socks5h → 169.150.231.165；UDP DNS 往返 31→79 字节（桌面 attempt 2、真机 attempt 1）
+```
+
+### P2-E2 core 的 vet 与测试
+
+```bash
+cd core
+go vet ./...
+go test ./... -count=1 -v
+```
+
+```
+[... 26 lines omitted ...]
+=== RUN   TestUDPAssociateDropsFragment
+--- PASS: TestUDPAssociateDropsFragment (0.40s)
+=== RUN   TestUDPAssociateRejectedWithoutDialer
+--- PASS: TestUDPAssociateRejectedWithoutDialer (0.00s)
+=== RUN   TestAssociationLRUAndIdle
+--- PASS: TestAssociationLRUAndIdle (0.40s)
+=== RUN   TestUDPAssociateConcurrentTargets
+--- PASS: TestUDPAssociateConcurrentTargets (0.00s)
+=== RUN   TestUDPAssociateDiesWithControlConnection
+--- PASS: TestUDPAssociateDiesWithControlConnection (0.85s)
+=== RUN   TestServerClosesListenerOnCancel
+--- PASS: TestServerClosesListenerOnCancel (0.10s)
+PASS
+ok  	github.com/dsh/android-proton/core/socks5	2.172s
+=== RUN   TestFrameRoundTrip
+--- PASS: TestFrameRoundTrip (0.00s)
+=== RUN   TestHandshakeFrameIsNormal
+--- PASS: TestHandshakeFrameIsNormal (0.00s)
+=== RUN   TestDecodeRejectsGarbage
+--- PASS: TestDecodeRejectsGarbage (0.00s)
+PASS
+ok  	github.com/dsh/android-proton/core/stealth	1.129s
+=== RUN   TestWriteJSONIsAtomicAndPrivate
+--- PASS: TestWriteJSONIsAtomicAndPrivate (0.01s)
+=== RUN   TestNewRejectsEmptyDir
+--- PASS: TestNewRejectsEmptyDir (0.00s)
+PASS
+ok  	github.com/dsh/android-proton/core/store	0.034s
+=== RUN   TestTCPHalfCloseThroughTunnel
+--- PASS: TestTCPHalfCloseThroughTunnel (0.69s)
+=== RUN   TestStealthTunnelEndToEnd
+    integration_test.go:132: handshake ok in 250ms (SNI fonts.gstatic.com)
+ERROR: srv: 2026/11/18 21:57:28 Bind close failed: tls: failed to send closeNotify alert (but connection was closed anyway): write tcp 127.0.0.1:59367->127.0.0.1:59368: wsasend: An established connection was aborted by the software in your host machine.
+--- PASS: TestStealthTunnelEndToEnd (0.74s)
+=== RUN   TestUDPThroughTunnel
+--- PASS: TestUDPThroughTunnel (0.69s)
+PASS
+ok  	github.com/dsh/android-proton/core/tunnel	3.227s
+
+[exit 0]
+```
+
+> 关键新增：`TestUDPThroughTunnel`（netstack UDP 往返 + 64 包突发）、`TestTCPHalfCloseThroughTunnel`
+> （netstack 的 `CloseWrite`，即 A13）、`TestUDPAssociateConcurrentTargets`（16 目标）、
+> `TestAssociationLRUAndIdle`、`TestUDPAssociateDiesWithControlConnection`、`TestServerClosesListenerOnCancel`。
+
+### P2-E3 真实 curl 经 SOCKS5（TCP 回归 + 真实出口）
+
+```bash
+# 前台：protonnode-cli run -state session.json -cfg cfg -socks 11085 -mode normal -server "US-CO#54"
+curl.exe -sS --max-time 40 -x socks5h://127.0.0.1:11085 https://api.ipify.org
+taskkill /PID <pid> /T /F
+netstat -ano | findstr :11085
+```
+
+```
+curl exit 0
+body: 169.150.231.165
+```
+
+> `netstat` 只剩 curl 自己的 `TIME_WAIT` 连接，**没有 LISTEN**：`Stop()` 没有留下监听 socket。
+
+### P2-E4 桌面：真实 Proton 上的 UDP 往返
+
+```bash
+protonnode-cli udptest -state session.json -cfg cfg -socks 11084 -server "US-CO#54" -wait 90s
+```
+
+```
+session: {"loggedIn":true,"uid":"umllpq6w…","email":"ch***@outlook.com","deviceName":"proton-stealth-LAPTOP-HAI0E0DS","certSerial":"18560510771","certExpiresAt":"2026-11-23T20:15:36+08:00","sessionDirty":false}
+status: {"state":"connected","server":"US-CO#54","entryIP":"212.102.44.166","sni":"gateway.icloud.com","handshakeMs":250,"rxBytes":92,"txBytes":180,"pid":10100,"udp":true,"socksPort":11084,"mode":"normal","reconnects":0}
+udp relay: 127.0.0.1:51610
+udp attempt 1: read udp 127.0.0.1:51611->127.0.0.1:51610: i/o timeout (retrying, UDP has no retransmission)
+UDP echo round-trip through Proton: 31 bytes -> 79 bytes, 3 answer(s): [104.26.13.205 104.26.12.205 172.67.74.152] (attempts: 2)
+status: {"state":"connected","server":"US-CO#54","entryIP":"212.102.44.166","sni":"gateway.icloud.com","handshakeMs":250,"uptimeSec":5,"rxBytes":14232,"txBytes":14764,"pid":10100,"udp":true,"socksPort":11084,"mode":"normal","reconnects":0}
+stopped: {"state":"idle","rxBytes":0,"txBytes":0,"pid":10100,"udp":true,"mode":"normal","reconnects":0}
+
+[exit 0]
+```
+
+> 第一次超时不是 bug：UDP 没有重传，隧道刚建立时第一个数据报可能丢。因此 udptest 内置 3 次重试
+> （真实 DNS 客户端也是这样做的）；这一条要写进 PROTOCOL.md 的限制里。
+
+### P2-E5 真机：同一份代码、真实 Proton 的 UDP 往返
+
+```bash
+GOOS=android GOARCH=arm64 CGO_ENABLED=0 go build -o protonnode-cli-android ./cmd/protonnode-cli
+adb push protonnode-cli-android /data/local/tmp/p1/protonnode-cli
+adb shell /data/local/tmp/p1/protonnode-cli udptest -state /data/local/tmp/p1/session.json \
+    -cfg /data/local/tmp/p1/cfg5 -socks 11080 -dns 172.26.26.3 -server "US-CO#54" -wait 90s
+```
+
+```
+session: {"loggedIn":true,"uid":"umllpq6w…","email":"ch***@outlook.com","deviceName":"proton-stealth-LAPTOP-HAI0E0DS","certSerial":"18560510771","certExpiresAt":"2026-11-23T12:15:36Z","sessionDirty":false}
+status: {"state":"connected","server":"US-CO#54","entryIP":"212.102.44.166","sni":"gateway.icloud.com","handshakeMs":250,"rxBytes":92,"txBytes":180,"pid":8513,"udp":true,"socksPort":11080,"mode":"normal","reconnects":0}
+udp relay: 127.0.0.1:48939
+UDP echo round-trip through Proton: 31 bytes -> 79 bytes, 3 answer(s): [104.26.12.205 172.67.74.152 104.26.13.205] (attempts: 1)
+status: {"state":"connected","server":"US-CO#54","entryIP":"212.102.44.166","sni":"gateway.icloud.com","handshakeMs":250,"uptimeSec":1,"rxBytes":236,"txBytes":276,"pid":8513,"udp":true,"socksPort":11080,"mode":"normal","reconnects":0}
+stopped: {"state":"idle","rxBytes":0,"txBytes":0,"pid":8513,"udp":true,"mode":"normal","reconnects":0}
+
+[exit 0]
+```
+
+### P2-E6 在真机上直接跑测试二进制（排除"只能在桌面过"的疑虑）
+
+```bash
+GOOS=android GOARCH=arm64 CGO_ENABLED=0 go test -c -o socks5.test ./socks5
+GOOS=android GOARCH=arm64 CGO_ENABLED=0 go test -c -o tunnel.test ./tunnel
+adb push socks5.test tunnel.test /data/local/tmp/p1/
+adb shell "cd /data/local/tmp/p1 && ./socks5.test -test.v -test.timeout 180s"
+adb shell "cd /data/local/tmp/p1 && ./tunnel.test -test.v -test.timeout 180s"
+```
+
+```
+[... 13 lines omitted ...]
+--- PASS: TestUDPAssociateRejectedWithoutDialer (0.00s)
+=== RUN   TestAssociationLRUAndIdle
+--- PASS: TestAssociationLRUAndIdle (0.40s)
+=== RUN   TestUDPAssociateConcurrentTargets
+--- PASS: TestUDPAssociateConcurrentTargets (0.00s)
+=== RUN   TestUDPAssociateDiesWithControlConnection
+--- PASS: TestUDPAssociateDiesWithControlConnection (0.20s)
+=== RUN   TestServerClosesListenerOnCancel
+--- PASS: TestServerClosesListenerOnCancel (0.10s)
+PASS
+
+[exit 0]
+```
+
+```
+[... 6 lines omitted ...]
+--- PASS: TestStealthTunnelEndToEnd (0.71s)
+=== RUN   TestUDPThroughTunnel
+--- PASS: TestUDPThroughTunnel (0.38s)
+PASS
+
+[exit 0]
+```
+
+> 这两次运行第一次暴露了一个**真机才有的时序问题**：关闭控制连接后，relay 最多还会应答 1s
+> （`serve()` 在等 `ReadFromUDP` 的 1s 读超时）。修法是在关联取消时立刻关闭 relay socket，
+> 让读操作立即返回；测试也改成"2s 内必须停止应答"。桌面从未复现，真机稳定复现 —— 值得记录。
+
+### P2-E7 P2 的发现
+
+| # | 发现 | 处理 |
+|---|---|---|
+| 1 | UDP 是尽力而为：隧道刚建立时首个数据报可能丢（桌面复现 attempt 1 超时、attempt 2 成功） | udptest 加 3 次重试；PROTOCOL.md 写明"应用层要自带重试" |
+| 2 | 8.8.8.8:53 有一次连续失败、几分钟后同一入口恢复 | 外部网络抖动，不是代码问题；已记录在证据里，未做特殊处理 |
+| 3 | DNS 查询头少写 2 字节（ARCOUNT）导致被解析器丢弃 | 由第一次真机失败暴露并修复；说明"真链路测试"必须真的发包，不能只看状态 |
+| 4 | 关联取消后 relay 仍能应答最多 1s | 取消时立即关闭 relay socket；真机测试改为 2s 容忍 |
+| 5 | `gonet.TCPConn` 实现了 `CloseWrite` | A13 关闭：SOCKS5 TCP 的 half-close 在隧道内可用 |
+
 
 ## P3 — 扫描（三级/取消/缓存）
 

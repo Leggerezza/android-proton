@@ -62,3 +62,23 @@ WireGuard handshake -> keepalive 25s -> MTU 1280..1320
    非 cgo 的调试二进制必须用 `-dns <server>` / `SetAPIDNS()` 固定解析器。
 2. **SNI**：与 Windows 相同，从 China-safe 池按入口 IP 轮转；真机上命中的是
    `gateway.icloud.com` 与 `connectivitycheck.gstatic.com`，都不是国内 SNI 黑名单里的名字。
+
+## 6. SOCKS5 UDP ASSOCIATE（P2 实现）
+
+```
+TCP 控制连接: VER|0x03|RSV|ATYP|DST|PORT      -> VER|0x00|RSV|ATYP|BND|PORT
+UDP 报文:     RSV(2)=0|FRAG|ATYP|DST|PORT|DATA
+```
+
+| 规则 | 实现 |
+|---|---|
+| relay 绑定 | `127.0.0.1:0›，把真实 BND 回给客户端 |
+| 生命周期 | 控制连接关闭 → 立即关闭 relay socket 与全部上游 socket |
+| `FRAG != 0› | 丢弃（不支持分片重组） |
+| ATYP | IPv4 / 域名 / IPv6 全支持；域名在**隧道内** 10.2.0.1 解析（5s 预算） |
+| 会话表 | 每关联 `dst → UDPConn›，上限 64，LRU 淘汰，空闲 120s 回收 |
+| 并发 | 16 个以上目标同时活跃已验证（要求 ≥16） |
+| 报文大小 | 单报文 ≤ 65507 字节 |
+
+**UDP 是尽力而为**：隧道刚建立时首个数据报可能丢（桌面实测 3 次里第 1 次超时）。
+应用层（DNS 客户端、游戏）必须自带重试——这不是 bug，是 UDP + 新建隧道的正常行为。

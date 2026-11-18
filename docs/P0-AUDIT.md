@@ -246,14 +246,14 @@ go vet ./...
 | A3 | netstack 吞吐/CPU 可接受 | ⏳ 只证明了功能可用，没有吞吐基线（P1 不做性能验收） | P1-E7 |
 | A4 | utls Chrome 指纹 + China-safe SNI 在国内网络可握手 | ✅ **已验证**：真机 TLS + WG 握手 251 ms（SNI gateway.icloud.com / connectivitycheck.gstatic.com） | P1-E7 |
 | A5 | 隧道内 DNS 10.2.0.1 能解析 | ✅ 间接验证：隧道内 GET api.ipify.org（域名）返回出口 IP | P1-E7 |
-| A6 | netstack UDP 可用 | ❌ 未开始，P2 从零做 | — |
+| A6 | netstack UDP 可用 | ✅ **已验证（P2）**：本地端到端 + 真机端到端，真实 Proton 上 DNS 查询走 UDP 拿到 A 记录 | TEST-EVIDENCE P2-E2 / P2-E4 / P2-E5 |
 | A7 | api.protonmail.ch 的 HTTP/1.1-only 行为在 Android 一致 | ✅ **已验证**：真机拉到 2784 台逻辑服务器 | P1-E7 |
 | A8 | needs2FA 的 scope 判定 | ⏳ 未用开 2FA 的账号验证（P1 复用了已有会话） | — |
 | A9 | 同一 DeviceName 不耗尽设备位 | ⏳ 只观察了证书复用，没有核对账号设备列表 | — |
 | A10 | OxygenOS 前台服务保活 | ❌ P4 | — |
 | A11 | FlClash PROCESS-NAME 命中 | ❌ P6 | — |
 | A12 | 16 KB 页运行时 | 🕓 **P2 结束后必测一次**（16 KB 系统镜像模拟器跑 APK + 自测），发布前（P7）再复跑；本机 OPD2514 是 4 KB 内核，测不了 | P1-E9、TEST-EVIDENCE「P2 后必测」 |
-| A13 | netstack 的 CloseWrite（half-close） | ❌ P2 | — |
+| A13 | netstack 的 CloseWrite（half-close） | ✅ **已验证（P2）**：TestTCPHalfCloseThroughTunnel 半关闭后仍能读回响应 | TEST-EVIDENCE P2-E2 |
 
 > 结论：P1 把 A1/A2/A4/A5/A7 从「假设」变成了「证据」，A6/A10/A11/A12/A13 仍必须在各自阶段消掉。
 > **A12 的处理（2026-11-18 决定）**：不等 P7 —— **P2 一结束就用 16 KB 系统镜像的模拟器测一次**，

@@ -8,7 +8,7 @@ Compose UI (P5) -> Foreground Service (P4) -> protonnode (gomobile contract)
                                              +- proton     (SRP login, logicals, certificate, tokens)
                                              +- stealth    (TunSafe frames + TLS-over-TCP bind)
                                              +- tunnel     (wireguard-go + gVisor netstack, no TUN)
-                                             +- socks5     (TCP CONNECT in P1, +UDP in P2)
+                                             +- socks5     (TCP CONNECT + UDP ASSOCIATE)
                                              +- store      (non-secret cache: servers, prefs)
 ```
 
@@ -57,3 +57,17 @@ bionic's `getaddrinfo` normally.
 With FlClash TUN enabled the app's own TLS would be captured and routed back
 into its own SOCKS port. The mihomo profile must contain
 `PROCESS-NAME,<app package>,DIRECT`; the app itself never opens a VpnService.
+
+## UDP flow (P2)
+
+```
+mihomo --UDP--> 127.0.0.1:<relay port>     (one socket per association)
+                     |
+                     +- dst -> netstack UDPConn   (LRU 64, idle 120s)
+                                 |
+                                 +- WireGuard data frames -> TLS -> Proton exit
+```
+
+The relay owns one UDP socket per association and one connected netstack socket per
+destination. A destination that stays idle for 120s is recycled, which keeps the
+source port stable for a game that keeps talking to the same server.

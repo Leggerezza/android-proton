@@ -6,10 +6,9 @@ into a local SOCKS5 node (`127.0.0.1:1080`) for mihomo / FlClash.
 - Target: OnePlus Pad 4 (OPD2514), OxygenOS 16, arm64-v8a, 16 KB pages
 - Package: `io.github.dsh.protonnode` (debug builds install as `io.github.dsh.protonnode.debug`)
 - Scope: SOCKS5 node only (no VpnService); routing is done by FlClash
-- Status: **P1 done** — the Go core opens a real Proton Stealth tunnel and serves
-  SOCKS5 TCP on a real account, on Windows and on the device. No UI yet (the
-  phase gate requires P2 before UI work). UDP, scanning and the foreground
-  service are the next phases; see `docs/TEST-EVIDENCE.md`.
+- Status: **P2 done** — real Proton Stealth tunnel + SOCKS5 **TCP and UDP**, verified on
+  Windows and on the device (curl -x socks5h, and a real UDP DNS round-trip).
+  Scanning (P3) and the foreground service (P4) are next; UI waits for the phase gate.
 
 ## Layout
 
@@ -54,6 +53,7 @@ or by importing an existing Windows session. The CLI harness takes that JSON:
 go build -o protonnode-cli ./core/cmd/protonnode-cli
 ./protonnode-cli convert -from <windows state.json> -out session.json
 ./protonnode-cli selftest -state session.json -cfg ./cfg -socks 11080 -mode normal
+./protonnode-cli udptest -state session.json -cfg ./cfg -socks 11080 -mode normal
 
 # device (cross-compiled, no cgo: Android has no /etc/resolv.conf for Go's pure resolver)
 GOOS=android GOARCH=arm64 CGO_ENABLED=0 go build -o cli ./core/cmd/protonnode-cli
@@ -82,6 +82,7 @@ A pass prints `tunnel up in …ms` and an exit IP that is **not** your own.
 - Proton exit NAT type is not guaranteed; Steam P2P may not work.
 - Wine/Box64 may spawn helper processes with a different UID; split-tunnelling
   rules must be verified per game, not assumed.
-- P1 serves **TCP only**: SOCKS5 UDP ASSOCIATE answers 0x07 until P2.
+- UDP is best effort: the first datagram right after a fresh handshake can be lost
+  (no retransmission); clients must retry.
 
 License: GPL-3.0-or-later (derived from Proton's open-source protocol code).

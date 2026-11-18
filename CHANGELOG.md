@@ -25,6 +25,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/), generated with git-clif
 - **P1**: device instrumentation smoke test proving the JNI bridge loads the Go runtime.
 - **P1**: `protonnode-cli` verification harness (convert/selftest/run/state).
 
+### Added (P2)
+
+- **P2**: SOCKS5 UDP ASSOCIATE - loopback relay, per-association dst->socket LRU (64)
+  with a 120s idle recycle, FRAG!=0 dropped, all three ATYP, in-tunnel DNS for
+  domains, lifetime bound to the TCP control connection.
+- **P2**: tunnel DialUDP / ResolveHost (netstack UDP); Status().udp is now true.
+- **P2**: protonnode-cli udptest (DNS query over SOCKS5 UDP, 3 attempts).
+- **P2**: tests for UDP framing, echo, 16 concurrent targets, LRU/idle, teardown,
+  netstack UDP through the tunnel and TCP half-close.
+
 ### Changed
 
 - CI: JDK 25 + Go 1.27.4, ktlint/Android Lint gate, release-APK path fixed for
@@ -32,3 +42,5 @@ Format: [Keep a Changelog](https://keepachangelog.com/), generated with git-clif
 - **P1**: `scripts/check-16kb.sh` now extracts every `.so` by exact entry name and fails
   loudly instead of silently passing when extraction fails (Git Bash + Info-ZIP).
 - **P1**: SOCKS5 no longer logs destination hosts (privacy, PROMPT.md 0.5).
+- **P2**: SOCKS5 success replies now carry the real BND for UDP sockets (UDP ASSOCIATE
+  used to answer 0.0.0.0:0).
