@@ -1,0 +1,9 @@
+This project implements the ProtonVPN "Stealth" transport, derived from:
+
+- ProtonVPN/wireguard-go (conn/bind_std_tcp.go, conn/tcp_tls_utils.go,
+  conn/server_name_utils) - Copyright (c) 2022-2025 Proton AG, GPL-3.0-or-later
+- ProtonVPN/go-vpn-lib (ed25519 ToX25519) - Copyright (c) 2021 Proton AG, GPL-3.0
+- proton-sidecar (this workspace's Windows implementation) - GPL-3.0-or-later
+
+WireGuard is a registered trademark of Jason A. Donenfeld. This project uses
+the official golang.zx2c4.com/wireguard library.

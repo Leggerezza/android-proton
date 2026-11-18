@@ -1,0 +1,19 @@
+pre-commit:
+  parallel: true
+  commands:
+    secrets:
+      run: gitleaks protect --staged --redact --no-banner
+    gofmt:
+      glob: "core/**/*.go"
+      run: test -z "$(gofmt -l {staged_files})" || (echo "gofmt needed"; exit 1)
+    go-vet:
+      glob: "core/**/*.go"
+      run: cd core && go vet ./...
+    ktlint:
+      glob: "app/**/*.kt"
+      run: ./gradlew :app:ktlintCheck --quiet
+
+commit-msg:
+  commands:
+    commitlint:
+      run: npx --no-install commitlint --edit "$1"
