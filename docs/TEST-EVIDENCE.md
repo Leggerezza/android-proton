@@ -775,7 +775,35 @@ adb shell am instrument -w io.github.dsh.protonnode.debug.test/androidx.test.run
 判定：`getconf PAGE_SIZE` = 16384 且 instrumentation 通过、`Status()` 状态机走到
 `connected`（模拟器能出网时）。任一失败就是 P2 之后的第一个 bug，优先于 P3。
 
-状态：**NOT RUN**（P2 结束后执行）
+#### 第一次尝试（2026-11-18，P2 结束当天）—— **被本机模拟器环境挡住**
+
+做了：
+
+1. 下载并校验 16 KB 系统镜像（`system-images;android-36;google_apis_ps16k;x86_64`，tag `page_size_16kb`）：
+   1,849,428,145 字节，SHA1 `dd783282e84bf475a02eba6777c79fc5695e1583` **校验一致**；
+2. 解包到 `$ANDROID_HOME/system-images/android-36/google_apis_ps16k/x86_64`
+   （`build.prop` 里是 `sdk_gphone16k_x86_64`，`abilist=x86_64,arm64-v8a`）；
+3. 手写 AVD（本机没有 cmdline-tools/avdmanager），用 `emulator -avd proton16k -no-window -gpu off -feature -Wifi` 启动。
+
+结果：
+
+```
+emulator boot: false after 273 s          (#1, WHPX 加速, -wipe-data)
+emulator boot: false after 144 s          (#2, -accel off 纯 TCG)
+adb devices -> emulator-5556  offline      (两种加速方式都停在 offline，guest 从未拉起 adbd)
+host: WHPX(10.0.26200) is installed and usable
+```
+
+判定：**A12 仍未验证**。这不是代码问题（`.so` 的 16 KB 对齐已由 P1-E4/E5 证明），是本机
+Android 模拟器起不来这个 16 KB 镜像（AVD 已生成 userdata、VM 进程存活，但 guest 不 boot）。
+在本机继续调模拟器属于环境排障，不属于 P2 的范围。
+
+下一步（保持“P2 后必测、发布前必须完成”的约定）：
+
+- 首选：拿到一台 **16 KB 页真机**（`getconf PAGE_SIZE` = 16384）跑同一套命令；
+- 次选：换一台机器用 `avdmanager` 建 16 KB AVD（镜像已在本机，可直接复制），或换 `android-36.1/37.x` 的 ps16k 镜像再试；
+- 验收命令与判定标准不变（见本节开头）。**在 `docs/RELEASE-CHECKLIST.md` 第 1 行被勾掉之前，不发布。**
+
 
 ## P2 — SOCKS5 TCP + UDP（2026-11-18）
 
