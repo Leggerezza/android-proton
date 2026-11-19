@@ -6,10 +6,10 @@ into a local SOCKS5 node (`127.0.0.1:1080`) for mihomo / FlClash.
 - Target: OnePlus Pad 4 (OPD2514), OxygenOS 16, arm64-v8a, 16 KB pages
 - Package: `io.github.dsh.protonnode` (debug builds install as `io.github.dsh.protonnode.debug`)
 - Scope: SOCKS5 node only (no VpnService); routing is done by FlClash
-- Status: **P4 implemented** — background node in a `specialUse` foreground service
-  (notification with Stop, network-change reconnect, boot restart, best-effort health
-  worker, Keystore-encrypted session). Runtime acceptance on a device is still pending
-  (no device attached); UI (P5) is next.
+- Status: **P5 in progress** — Compose UI (navigation rail / bottom bar by window size, Home,
+  Servers, Scan, Settings with per-app language and Material You, Logs behind FLAG_SECURE,
+  config export/import with a SHA-256 checksum). The connected-state screenshots still need a
+  fresh Proton login; P6 (FlClash routing + game mode) follows.
 
 ## Layout
 

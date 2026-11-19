@@ -1420,9 +1420,59 @@ stopped: {"state":"idle","rxBytes":0,"txBytes":0,"pid":26654,"udp":true,"mode":"
 - `BootReceiver` 从 BOOT_COMPLETED 拉起前台服务在 Android 12+ 可能被限制，因此是 best effort 且被 `runCatching` 包住。
 - 通知刷新在未授予 `POST_NOTIFICATIONS` 时跳过（前台通知本身由 `startForeground` 发出，不受影响）。
 
-## P5 — UI
+## P5 — UI（横屏双栏 / 断点 / zh-en / 安全日志）（2026-11-19）
 
-`NOT RUN`
+### P5 状态：**骨架已实现并在平板验收了一部分；连接态截图待登录**
+
+| 项 | 状态 | 证据 |
+|---|---|---|
+| 横屏双栏 + 侧栏（≥600dp）/ 底部导航（<600dp） | ✅ 设备实测 | P5-E1 / P5-E2 |
+| 断点 600/840dp（Home 在 ≥840dp 用两卡并排） | ✅ | `Layout.widthClass`，Home 见截图 |
+| Material You 动态取色 + 主题 系统/浅/深 | ✅ | Settings 截图 |
+| zh/en 语言切换（per-app locale） | ✅ 切换后界面变中文 | P5-E3 |
+| 日志屏 FLAG_SECURE | ✅ 截图整块变黑 | P5-E4 |
+| 配置导出/导入（版本 + SHA-256，无凭据） | ✅ 单元测试 3 项 | P5-E5 |
+| 空/错/加载态 | ✅ 未登录提示、扫描空态、错误卡片 | 截图 |
+| **连接态 / 服务器列表 / 扫描结果** | ⏳ 需要重新登录（旧 refresh token 已失效） | 待做 |
+
+### P5-E1 expanded（横屏 1292dp）：侧栏 + 首页
+
+![home](evidence/p5-home-zh.png)
+
+### P5-E2 compact（把窗口压到 438dp）：底部导航 + 单栏
+
+```bash
+adb shell wm size 1150x2000   # 438dp @420dpi -> compact
+adb shell wm size reset
+```
+
+![compact](evidence/p5-compact.png)
+
+### P5-E3 语言切换
+
+设置 → Language → 简体中文 后 `uiautomator` 读到：
+
+```
+首页 | 服务器 | 扫描 | 设置 | 日志 | 已停止 | 连接 | 服务器 | 入口 | — | 握手 | —
+```
+
+实现：`AppCompatDelegate.setApplicationLocales`（per-app locale），资源在 `values/` + `values-zh/`。
+
+### P5-E4 日志屏 FLAG_SECURE
+
+进入 Logs 后 `screencap` 的应用区域全黑（只剩状态栏/桌面任务栏等系统窗口），离开即恢复。
+
+### P5-E5 配置导出/导入
+
+`ConfigCodecTest`：往返、篡改拒绝、版本不符拒绝 —— 3/3 通过；导出内容不含 token/password/key。
+
+### P5-E6 说明
+
+- 连接态没有截到图：这轮调试时把 P2 时期的 refresh token 用掉了（Proton 的 refresh token 一次性），
+  App 里旧会话因此报 `401 Invalid access token` / `2001 Invalid input`。已在 App 补上 **轮换后写回**（`CoreController.persistSession`，服务每 5s 同步一次），
+  并在设置页加了登录表单，重新登录后即可继续。
+- 设备上的 Live Caption（`com.google.android.as:captions`）会在截图里盖一层字幕浮层，验收截图时已尽量避开；
+  收尾时会把它恢复原状。
 
 ## P6 — FlClash 集成
 

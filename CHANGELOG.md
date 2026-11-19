@@ -67,6 +67,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/), generated with git-clif
 - **P4**: `BootReceiver` (opt-in auto start) and `HealthWorker` (WorkManager, best effort).
 - **P4**: JVM unit tests for the notification text and the network fingerprint.
 
+### Added (P5)
+
+- **P5**: Compose UI with a navigation rail (>= 600dp) or bottom bar (< 600dp), a 840dp
+  expanded layout on the tablet, Material You colors and a system/light/dark theme.
+- **P5**: Home (state, connect/disconnect, server/traffic/uptime/error), Servers (mode + search),
+  Scan (scope, progress, L3 results), Settings (theme, language, mode, autostart, API DNS,
+  account login/logout, export/import, battery optimization) and Logs behind FLAG_SECURE.
+- **P5**: per-app language (en / zh) via AppCompatDelegate, `values-zh` strings.
+- **P5**: `ConfigCodec` export/import with a SHA-256 checksum (no credentials) + unit tests.
+- **P5**: the app now persists rotated Proton session tokens (`CoreController.persistSession`,
+  refreshed by the foreground service) — the P2 write-back bug no longer bites on device.
+- **P5**: the service ignores repeated network callbacks with the same fingerprint.
+
 ### Changed
 
 - CI: JDK 25 + Go 1.27.4, ktlint/Android Lint gate, release-APK path fixed for
