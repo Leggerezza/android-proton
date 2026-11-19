@@ -42,6 +42,11 @@ scripts/build-core-aar.sh                 # -> app/libs/core.aar (git-ignored)
 # instrumentation test on it; run from an interactive desktop session.
 powershell -File scripts/verify-16kb-emulator.ps1
 
+# The 16 KB emulator is x86_64 and its arm64 translation aborts on Go code, so A12
+# is also checked with a natively built core (release stays arm64-only):
+#   gomobile bind -target=android/amd64 -androidapi 26 -o app/libs/core-x86_64.aar ./protonnode
+./gradlew :app:assembleDebug -PemulatorAbi=x86_64
+
 # 4. Release APK + 16 KB gate (checks every .so in the APK)
 ./gradlew :app:assembleRelease
 bash scripts/check-16kb.sh app/build/outputs/apk/release/app-release-unsigned.apk

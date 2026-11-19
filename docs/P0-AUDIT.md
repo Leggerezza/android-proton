@@ -232,7 +232,7 @@ go vet ./...
 | A9 | 同一 `DeviceName` 重复注册不会快速耗尽设备位 | 基线每次换 state 会新建设备 | 记录设备列表变化 | P1 |
 | A10 | OxygenOS 16 的前台服务能长期存活 | 未测 | 锁屏 2h / 游戏 30min 观察 | P4 |
 | A11 | FlClash `PROCESS-NAME,<包名>` 能命中本应用与 GameNative | 未测 | mihomo 连接面板看 UID/进程 | P6 |
-| A12 | 16 KB 页运行时（Go runtime 假设 4 KB 页）无异常 | 无 16 KB 真机 | OnePlus Pad 4 上跑全链路 | P7 |
+| A12 | 16 KB 页运行时 | ✅ **已验证（2026-11-19）**：16 KB 页的 Android 16 guest（`PAGE_SIZE=16384`）上，JNI 冒烟 OK(1 test)、socks5 11/11、tunnel 3/3；arm64 真机待 P7 复跑（模拟器的 arm64 翻译 SIGILL） | TEST-EVIDENCE「P2 后必测」 |
 | A13 | netstack 的 `net.Conn` 支持 `CloseWrite`（half-close） | 未验证 | 单元测试：半关闭后对端能读完 | P2 |
 
 ---

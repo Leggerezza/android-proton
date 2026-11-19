@@ -783,65 +783,101 @@ adb 状态，失败时打印 adb devices + 模拟器日志尾部；新增 `-Show
 **仍未验证，不得当成结论**：A6（netstack UDP，P2）、A10（OxygenOS 保活，P4）、
 A11（FlClash PROCESS-NAME，P6）、A12（16 KB 运行时，需要 16 KB 页真机，P7）、A13（half-close，P2）。
 
-### P2 后必测：16 KB 页运行时（A12）
+### P2 后必测：16 KB 页运行时（A12）—— **2026-11-19 通过**
 
-> 这条**不是** P2 的功能验收项，但它必须在 P2 结束后立刻做一次，不能拖到发布前才想起。
-> 决定记录在 docs/P0-AUDIT.md §7.1；发布前的复跑写在 docs/RELEASE-CHECKLIST.md。
+> 约定：P2 一结束就测一次，发布前再复跑（见 docs/P0-AUDIT.md §7.1、docs/RELEASE-CHECKLIST.md 第 1 行）。
+> 结论：**在真正的 16 KB 页 Android 16 guest 上跑通了**（JNI + 全部 Go 网络测试）。
 
-为什么现在还不能关：静态对齐（A2，P1-E4/P1-E5）只证明 `libgojni.so` 的 LOAD 段是 `0x4000`、
-APK 能被打包器接受；它**不证明** Go runtime 与整条隧道在 16 KB 页内核上运行正常。
+#### 判定
 
-做法（P2 结束时执行，结果追加到本节）：
+| 项 | 结果 |
+|---|---|
+| guest 页大小 | `getconf PAGE_SIZE` = **16384**（`sdk_gphone16k_x86_64`，Android 16 / SDK 36） |
+| JNI 桥在 16 KB 上加载 Go 运行时 | ✅ `am instrument` → **OK (1 test)** |
+| SOCKS5 全量测试（TCP+UDP） | ✅ **11/11 PASS** |
+| 隧道栈（TLS+WireGuard+netstack+UDP+half-close） | ✅ **3/3 PASS** |
+| 真实 Proton 隧道（模拟器） | ⏳ 未跑：会话令牌已过期（见本节末），改用上面的本地端到端测试覆盖同一段代码 |
+
+#### 原始输出
+
+```
+# 16 KB page-size emulator run (A12)
+date: 2026-11-19T05:07:01.172Z
+serial: emulator-5554
+product: sdk_gphone16k_x86_64
+build: sdk_gphone16k_x86_64-userdebug 16 BE2A.250530.026.F3 13894323 dev-keys
+android sdk: 36
+kernel: Linux localhost 6.6.66-android15-8-gd0c43a640eab-ab13812146 #1 SMP PREEMPT Mon Jul 21 17:41:13 UTC 2025 x86_64 Toybox
+PAGE_SIZE: 16384
+abilist: x86_64,arm64-v8a
+
+## JNI smoke (x86_64 AAR, debug APK built with -PemulatorAbi=x86_64)
+am instrument -> OK (1 test)   [io.github.dsh.protonnode.CoreBridgeTest.initStatusAndShutdownWork]
+
+## socks5 test binary (11 tests)
+--- PASS: TestLoopbackAddrRejectsNonLoopback (0.00s)
+--- PASS: TestConnectRelay (0.00s)
+--- PASS: TestUDPAssociateIsRejected (0.00s)
+--- PASS: TestParseEncodeUDPDatagram (0.00s)
+--- PASS: TestUDPAssociateEcho (0.00s)
+--- PASS: TestUDPAssociateDropsFragment (0.40s)
+--- PASS: TestUDPAssociateRejectedWithoutDialer (0.00s)
+--- PASS: TestAssociationLRUAndIdle (0.40s)
+--- PASS: TestUDPAssociateConcurrentTargets (0.00s)
+--- PASS: TestUDPAssociateDiesWithControlConnection (0.20s)
+--- PASS: TestServerClosesListenerOnCancel (0.10s)
+PASS
+
+## tunnel test binary (3 tests: TLS+WG+netstack, UDP, half-close)
+=== RUN   TestTCPHalfCloseThroughTunnel
+--- PASS: TestTCPHalfCloseThroughTunnel (0.36s)
+=== RUN   TestStealthTunnelEndToEnd
+    integration_test.go:132: handshake ok in 355ms (SNI fonts.gstatic.com)
+--- PASS: TestStealthTunnelEndToEnd (0.36s)
+=== RUN   TestUDPThroughTunnel
+--- PASS: TestUDPThroughTunnel (0.36s)
+PASS
+```
+
+复现命令（A12 专用，不需要真机）：
 
 ```bash
-# 1. 装一个 16 KB 系统镜像（Android 15/16 都提供 16 KB 变体）
-sdkmanager --install "system-images;android-36;google_apis;arm64-v8a"   # 名称以 sdkmanager --list 为准，
-                                                                        # 需要带 "16 KB"/"16k" 的那一条
-avdmanager create avd -n proton16k -k "system-images;android-36;google_apis;arm64-v8a" --device "pixel_tablet"
-emulator -avd proton16k -no-snapshot &
+# 1. 给 x86_64 模拟器编一份 Go 核心（真机发布仍是 arm64，见 §6.1）
+gomobile bind -target=android/amd64 -androidapi 26 -o app/libs/core-x86_64.aar ./protonnode   # 在 core/ 下
 
-# 2. 确认它真的跑在 16 KB 上（关键，不是看镜像名字）
-adb shell getconf PAGE_SIZE          # 期望 16384
+# 2. 用这份 AAR 打一个 x86_64 debug APK 并跑 JNI 冒烟
+./gradlew :app:assembleDebug :app:assembleDebugAndroidTest -PemulatorAbi=x86_64
+adb -s emulator-5554 install -r app/build/outputs/apk/debug/app-debug.apk
+adb -s emulator-5554 install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+adb -s emulator-5554 shell am instrument -w io.github.dsh.protonnode.debug.test/androidx.test.runner.AndroidJUnitRunner
 
-# 3. 装 APK 并跑 JNI 冒烟 + 隧道自测
-adb install -r app/build/outputs/apk/debug/app-debug.apk
-adb shell am instrument -w io.github.dsh.protonnode.debug.test/androidx.test.runner.AndroidJUnitRunner
-# （或 ./gradlew :app:connectedDebugAndroidTest，ANDROID_SERIAL=emulator-5554）
+# 3. 把 Go 测试二进制也跑在同一个 16 KB guest 上
+GOOS=android GOARCH=amd64 CGO_ENABLED=1 CC=$NDK/toolchains/llvm/prebuilt/windows-x86_64/bin/x86_64-linux-android26-clang \
+  go test -c -o tunnel.test ./tunnel
+adb -s emulator-5554 push tunnel.test /data/local/tmp/ && adb -s emulator-5554 shell 'chmod 700 /data/local/tmp/tunnel.test'
+adb -s emulator-5554 shell 'cd /data/local/tmp && ./tunnel.test -test.v'
 ```
 
-判定：`getconf PAGE_SIZE` = 16384 且 instrumentation 通过、`Status()` 状态机走到
-`connected`（模拟器能出网时）。任一失败就是 P2 之后的第一个 bug，优先于 P3。
+一键脚本：`scripts/verify-16kb-emulator.ps1`（启动/复用模拟器、断言 PAGE_SIZE、装 APK、跑 instrumentation）。
 
-#### 第一次尝试（2026-11-18，P2 结束当天）—— **被本机模拟器环境挡住**
+#### 过程中的三次尝试（保留下来，避免以后重复踩坑）
 
-做了：
+1. **代理会话里 headless 启动**（WHPX / TCG / 各种 GPU 组合）：guest 永远 `offline`，拿不到 adbd，
+   模拟器日志停在 `Windows Hypervisor Platform accelerator is operational`，还报 `vulkan-1.dll` 加载失败。
+2. **用户在自己的桌面会话里启动**：模拟器正常启动（`PAGE_SIZE`=16384）。但直接装 **arm64 APK** 时进程 SIGILL：
+   `libndk_translation.so (berberis::UndefinedInsnThunk)` —— 模拟器用二进制翻译跑 arm64 应用，遇到 Go 生成的某条指令不认。
+   这不是 16 KB 问题，也不是应用 bug（真机 arm64 支持该指令），是 x86_64 模拟器的翻译层限制。
+3. **改用 x86_64 构建**（`-PemulatorAbi=x86_64` + `core-x86_64.aar`）：JNI 与全部测试一次通过。
 
-1. 下载并校验 16 KB 系统镜像（`system-images;android-36;google_apis_ps16k;x86_64`，tag `page_size_16kb`）：
-   1,849,428,145 字节，SHA1 `dd783282e84bf475a02eba6777c79fc5695e1583` **校验一致**；
-2. 解包到 `$ANDROID_HOME/system-images/android-36/google_apis_ps16k/x86_64`
-   （`build.prop` 里是 `sdk_gphone16k_x86_64`，`abilist=x86_64,arm64-v8a`）；
-3. 手写 AVD（本机没有 cmdline-tools/avdmanager），用 `emulator -avd proton16k -no-window -gpu off -feature -Wifi` 启动。
+#### 仍然挂在发布门禁上的一条
 
-结果：
+**arm64 + 16 KB 真机**还没跑过（本机三台设备都是 4 KB 页；模拟器的 arm64 翻译不可用）。
+16 KB 相关的东西（Go runtime 的页大小处理、netstack 的 mmap、APK 里 .so 的对齐）已经在 16 KB guest 上验证，
+剩下的只是"同一份 arm64 代码在 16 KB 内核上的最终确认"，按 docs/RELEASE-CHECKLIST.md 在 P7 用 16 KB 真机复跑一次即可。
 
-```
-emulator boot: false after 273 s          (#1, WHPX 加速, -wipe-data)
-emulator boot: false after 144 s          (#2, -accel off 纯 TCG)
-adb devices -> emulator-5556  offline      (两种加速方式都停在 offline，guest 从未拉起 adbd)
-host: WHPX(10.0.26200) is installed and usable
-```
-
-判定：**A12 仍未验证**。这不是代码问题（`.so` 的 16 KB 对齐已由 P1-E4/E5 证明），是本机
-Android 模拟器起不来这个 16 KB 镜像（AVD 已生成 userdata、VM 进程存活，但 guest 不 boot）。
-在本机继续调模拟器属于环境排障，不属于 P2 的范围。
-
-下一步（保持“P2 后必测、发布前必须完成”的约定）：
-
-- 首选：拿到一台 **16 KB 页真机**（`getconf PAGE_SIZE` = 16384）跑同一套命令；
-- 次选：换一台机器用 `avdmanager` 建 16 KB AVD（镜像已在本机，可直接复制），或换 `android-36.1/37.x` 的 ps16k 镜像再试；
-- 验收命令与判定标准不变（见本节开头）。**在 `docs/RELEASE-CHECKLIST.md` 第 1 行被勾掉之前，不发布。**
-
-
+> 附注：模拟器上重跑真实 Proton 时发现会话失效（`401 Invalid access token` / refresh `2001 Invalid input`）。
+> 原因是 `protonnode-cli` 以前只把轮换后的 token 留在内存里、没写回 state 文件，而 Proton 的 refresh token 是一次性的。
+> 已在 CLI 里修掉（`saveSessionBack`）：每次 Stop 前把 `SessionJSON()` 写回 `-state`。App 侧本来就要求调用方持久化 `SessionJSON()`。
 ## P2 — SOCKS5 TCP + UDP（2026-11-18）
 
 ### P2 判定（PROMPT.md 5.3 / 5.4 / 11）

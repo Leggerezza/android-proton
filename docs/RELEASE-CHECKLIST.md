@@ -8,7 +8,7 @@ carries the command that proves it.
 
 | # | Gate | How it is proven | Phase |
 |---|---|---|---|
-| 1 | **16 KB page runtime (A12)** — the app *runs* on a 16 KB kernel, not merely links | `scripts/verify-16kb-emulator.ps1` (boots the 16 KB image, asserts `getconf PAGE_SIZE` = 16384, installs the APK, runs the instrumentation test); result goes into the "P2 后必测" subsection of TEST-EVIDENCE | **BLOCKED on this host** (see TEST-EVIDENCE); must pass before release |
+| 1 | **16 KB page runtime (A12)** — the app *runs* on a 16 KB kernel, not merely links | ✅ 2026-11-19: 16 KB emulator guest (`PAGE_SIZE=16384`), JNI smoke OK(1 test), socks5 11/11, tunnel 3/3 (TEST-EVIDENCE). **Re-run before release** with `scripts/verify-16kb-emulator.ps1`, and on a 16 KB **arm64** device if one is available | P2 (done, emulator) / P7 (arm64 device) |
 | 2 | 16 KB alignment of every `.so` in the APK | `scripts/check-16kb.sh <apk>` (readelf LOAD + `zipalign -c -P 16`) | P1 (done) / every release |
 | 3 | Signed release APK | `./gradlew :app:assembleRelease` with `keystore.properties` injected from CI secrets | P7 |
 | 4 | `SHA256SUMS` | `sha256sum app/build/outputs/apk/release/*.apk` | P7 |

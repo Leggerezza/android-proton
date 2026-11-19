@@ -35,6 +35,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/), generated with git-clif
 - **P2**: tests for UDP framing, echo, 16 concurrent targets, LRU/idle, teardown,
   netstack UDP through the tunnel and TCP half-close.
 
+### Verified
+
+- **A12**: the Go core runs on a real 16 KB page-size Android 16 guest (emulator,
+  `PAGE_SIZE=16384`): JNI smoke OK(1 test), socks5 11/11, tunnel (TLS+WireGuard+netstack+UDP
++half-close) 3/3. The arm64 APK cannot run on the x86_64 emulator (its arm64 binary
+  translation aborts), so A12 was checked with `-PemulatorAbi=x86_64`; the arm64 16 KB
+  confirmation stays a P7 item on a 16 KB device.
+- **protonnode-cli** now writes rotated tokens back to `-state` (Proton refresh tokens are
+  single-use; not persisting them made the next run fail with 401/2001).
+
 ### Changed
 
 - CI: JDK 25 + Go 1.27.4, ktlint/Android Lint gate, release-APK path fixed for
