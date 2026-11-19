@@ -33,6 +33,7 @@ func usage() {
 		"  run        connect and keep the SOCKS5 port open until interrupted\n"+
 		"  udptest    connect, then send a DNS query over SOCKS5 UDP ASSOCIATE (P2)\n"+
 		"  scan       three-level server scan (P3): L1 tcp, L2 tls, L3 real wireguard\n"+
+		"  netcheck   prove which local interface our direct dials use (no proxy)\n"+
 		"  state      print SessionState() and Status()\n"+
 		"  convert    turn a Windows-baseline state.json into the session JSON this tool takes\n\n"+
 		"Flags are per command; run \"protonnode-cli <command> -h\".\n")
@@ -55,6 +56,8 @@ func main() {
 		err = cmdUDPTest(os.Args[2:])
 	case "scan":
 		err = cmdScan(os.Args[2:])
+	case "netcheck":
+		err = cmdNetcheck(os.Args[2:])
 	case "convert":
 		err = cmdConvert(os.Args[2:])
 	case "version":
@@ -768,4 +771,62 @@ func cmdScan(args []string) error {
 		fmt.Printf("cancel latency: %s\n", cancelLatency.Round(time.Millisecond))
 	}
 	return nil
+}
+
+// cmdNetcheck answers the question "did this test really go out directly, or
+// through the host's VPN/proxy?". It dials the given endpoints with the same
+// plain net.Dialer the scanner uses (Go ignores the Windows WinINET proxy) and
+// prints the local address plus the interface that owns it.
+func cmdNetcheck(args []string) error {
+	fs := flag.NewFlagSet("netcheck", flag.ExitOnError)
+	target := fs.String("target", "212.102.51.121:443", "comma separated host:port endpoints to dial")
+	timeout := fs.Duration("timeout", 5*time.Second, "per-dial timeout")
+	_ = fs.Parse(args)
+	fmt.Println("env proxies: HTTP_PROXY=", os.Getenv("HTTP_PROXY"), "HTTPS_PROXY=", os.Getenv("HTTPS_PROXY"),
+		"(the node ignores them: transport Proxy=nil and raw dials are used)")
+	for _, ep := range strings.Split(*target, ",") {
+		ep = strings.TrimSpace(ep)
+		if ep == "" {
+			continue
+		}
+		d := net.Dialer{Timeout: *timeout}
+		start := time.Now()
+		conn, err := d.Dial("tcp", ep)
+		if err != nil {
+			fmt.Printf("%-24s FAILED after %s: %v\n", ep, time.Since(start).Round(time.Millisecond), err)
+			continue
+		}
+		local := conn.LocalAddr().String()
+		fmt.Printf("%-24s direct ok in %s, local %s on %s\n", ep, time.Since(start).Round(time.Millisecond), local, ifaceOf(local))
+		_ = conn.Close()
+	}
+	return nil
+}
+
+// ifaceOf maps a local "ip:port" to the interface name that owns the IP.
+func ifaceOf(localAddr string) string {
+	host, _, err := net.SplitHostPort(localAddr)
+	if err != nil {
+		return "unknown"
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return "unknown"
+	}
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return "unknown"
+	}
+	for _, iface := range ifaces {
+		addrs, err := iface.Addrs()
+		if err != nil {
+			continue
+		}
+		for _, a := range addrs {
+			if ipn, ok := a.(*net.IPNet); ok && ipn.IP.Equal(ip) {
+				return iface.Name
+			}
+		}
+	}
+	return "unknown"
 }

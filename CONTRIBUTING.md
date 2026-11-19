@@ -19,6 +19,9 @@ cd core && go vet ./... && go test ./...
 - Protocol changes require a test vector in `core/testdata/` and an entry in `docs/PROTOCOL.md`.
 - Never commit keystores, tokens, or generated APKs.
 - No fake results: every "pass" in `docs/TEST-EVIDENCE.md` carries the command and its raw output.
+- Before recording any **network** result, prove the path is direct: `protonnode-cli netcheck -target <entry>:443`
+  must show the physical interface IP (not 127.0.0.1, not Tailscale 100.x, not a TUN). The dev machine runs
+  FlClash in system-proxy mode, which Go ignores, but a TUN would still capture us.
 
 ## Phase gates
 

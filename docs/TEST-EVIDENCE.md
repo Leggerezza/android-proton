@@ -19,6 +19,91 @@
 
 ---
 
+## 网络路径自检（所有网络证据的前提）
+
+这台开发机**同时**跑着 FlClash（系统代理 + 自家的 proton-stealth 节点）、ProtonVPN 客户端与 Tailscale，
+所以任何"真实网络"结论都必须先证明它没有走宿主代理。本次审计（2026-11-19）的结论：
+
+| 事实 | 证据 |
+|---|---|
+| 没有 TUN 抢默认路由 | 唯一默认路由是 WLAN/10.241.0.1（`Get-NetRoute`） |
+| FlClash 是 **system-proxy** 模式 | `HKCU\...\Internet Settings`：`ProxyEnable=1`、`ProxyServer=127.0.0.1:7890` |
+| 宿主代理链的出口是 Proton | `curl -x http://127.0.0.1:7890` 与 `-x socks5h://127.0.0.1:1080` 都得到 `169.150.231.172` |
+| 我们的直连**没有**经过它 | `netcheck` 显示源地址是 `10.241.99.222`（WLAN 网卡），扫描进程的 TCP 连接全部直连入口 IP，没有一条连到 `127.0.0.1:7890` |
+| Go 不会用系统代理 | 我们的 transport 显式 `Proxy=nil`，扫描是裸 `net.Dialer`；WinINET 设置对 Go 不可见 |
+
+原始输出：
+
+```
+# 宿主网络路径自检（2026-11-19）
+
+## 这台 Windows 上同时运行的东西
+
+ProcessName               Id
+-----------               --
+FlClash                28512
+FlClashCore            29232
+FlClashHelperService    7300
+proton-stealth         32044
+ProtonVPN.NrptWatchdog 12972
+ProtonVPNService        7396
+tailscaled              7896
+tailscaled             13092
+tailscale-ipn          31264
+## 默认路由（有没有 TUN 抢默认路由）
+ifIndex InterfaceAlias NextHop    RouteMetric ifMetric
+------- -------------- -------    ----------- --------
+     11 WLAN           10.241.0.1           0
+## 系统代理（WinINET，FlClash 的 system-proxy 模式）
+ProxyEnable : 1
+ProxyServer : 127.0.0.1:7890
+## FlClash 的出口 IP（经过它自己的代理链）
+via http://127.0.0.1:7890      -> 169.150.231.172
+via socks5h://127.0.0.1:1080   -> 169.150.231.172
+
+## 我们自己的直连证据：netcheck（本地源地址 + 网卡）
+env proxies: HTTP_PROXY=  HTTPS_PROXY=  (the node ignores them: transport Proxy=nil and raw dials are used)
+212.102.51.121:443       direct ok in 320ms, local 10.241.99.222:64752 on WLAN
+212.102.51.122:443       direct ok in 319ms, local 10.241.99.222:64754 on WLAN
+185.70.42.25:443         direct ok in 244ms, local 10.241.99.222:64757 on WLAN
+8.8.8.8:443              FAILED after 5.001s: dial tcp 8.8.8.8:443: i/o timeout
+
+## 扫描进程的 TCP 连接（无 127.0.0.1:7890）
+RemoteAddress  RemotePort       State
+-------------  ----------       -----
+103.125.235.20        443     SynSent
+138.199.21.213        443     SynSent
+138.199.21.214        443     SynSent
+185.159.156.37        443     SynSent
+185.159.156.56        443     SynSent
+185.70.42.25          443 Established
+45.14.71.5            443     SynSent
+45.14.71.6            443     SynSent
+45.87.213.210         443     SynSent
+62.169.136.208        443     SynSent
+62.169.136.80         443     SynSent
+79.135.104.40         443     SynSent
+```
+
+**规则（写进 CONTRIBUTING）**：任何一次要写进本文件"真实网络"结论的运行，先跑
+
+```bash
+protonnode-cli netcheck -target <entry-ip>:443,<entry-ip>:443
+```
+
+源地址必须是物理网卡的 IP（Windows 的 WLAN、手机会是 wlan0），不能是 `127.0.0.1`、Tailscale（100.x）或 TUN。
+
+**对已记录证据的影响**：
+
+- **Windows 侧（P1/P2/P3 的 Windows 证据）**：直连，未受 FlClash 影响（上面的证据成立）。
+- **手记（OnePlus Pad 4）侧的 P1/P2 证据**：当时设备上 `vgate0` 处于 up 状态（FlClash 的 VpnService，
+  `172.30.207.206/32`），**无法排除**它的 TUN 接管了 shell 进程的流量。握手/出口 IP 仍然是 Proton 的，
+  但"直连可达"这一点没有被证明 —— 已列为待办：把设备拿回来后**关掉 FlClash VPN 重跑** P1/P2 的设备侧用例。
+- **16 KB 模拟器（A12）**：模拟器里没有 FlClash，路径干净。
+
+> 这也是 P6 要验证的东西：FlClash 开启 TUN 时，本应用必须被 `PROCESS-NAME,<包名>,DIRECT` 排除，
+> 否则我们的 API/隧道连接会被自己的 VPN 再抓一遍（死循环或测到假路径）。
+
 ## P0 — 审计 + 骨架
 
 ### P0-E1 工具链
@@ -693,6 +778,10 @@ stopped: {"state":"idle","rxBytes":0,"txBytes":0,"pid":26195,"udp":false,"mode":
 [exit 0]
 ```
 
+
+> ⚠️ **路径未证明（2026-11-19 复核）**：跑这一节时设备上 `vgate0`（FlClash 的 VpnService）是 up 的，
+> 不能排除 shell 进程的流量被 TUN 接管。握手与出口 IP 仍是 Proton 的，但"从手机直连可达"没有被证明；
+> 待设备回来后关闭 FlClash VPN 重跑（见「网络路径自检」）。
 > 会话文件在测试后立刻从设备删除（`rm -f /data/local/tmp/p1/session.json`），设备上只留下
 > `prefs.json` 与 `servers.json`（非机密）。
 
@@ -1017,6 +1106,10 @@ stopped: {"state":"idle","rxBytes":0,"txBytes":0,"pid":8513,"udp":true,"mode":"n
 [exit 0]
 ```
 
+
+> ⚠️ **路径未证明（2026-11-19 复核）**：跑这一节时设备上 `vgate0`（FlClash 的 VpnService）是 up 的，
+> 不能排除 shell 进程的流量被 TUN 接管。握手与出口 IP 仍是 Proton 的，但"从手机直连可达"没有被证明；
+> 待设备回来后关闭 FlClash VPN 重跑（见「网络路径自检」）。
 ### P2-E6 在真机上直接跑测试二进制（排除"只能在桌面过"的疑虑）
 
 ```bash

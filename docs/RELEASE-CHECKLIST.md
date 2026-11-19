@@ -17,6 +17,7 @@ carries the command that proves it.
 | 7 | No known vulnerabilities | `cd core && govulncheck ./...` (0 high) | P8 |
 | 8 | Keystore-encrypted tokens | manual: app storage contains no plaintext token | P8 |
 | 9 | Logs are redacted | unit test + manual: `RecentLogs` has no e-mail local part and no token | P8 |
+| 9b | Recorded network evidence states a direct path | `protonnode-cli netcheck` on the same network shows a physical interface IP (no host proxy/TUN); device runs happen with FlClash's VPN **off** | every phase |
 | 10 | LICENSE / NOTICE / SECURITY.md present and current | repo review | P7 |
 | 11 | GPL-3.0-or-later compliance | source tag published together with the APK | P7 |
 

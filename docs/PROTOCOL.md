@@ -96,3 +96,12 @@ UDP 报文:     RSV(2)=0|FRAG|ATYP|DST|PORT|DATA
 取消：每个 worker 在每一步之间检查 context，``CancelScan`` 实测 1 ms 内生效。
 
 实测（2026-11-19，JP）：13 个入口 → L1 13 → L2 若干 → **L3 2**（212.102.51.121 / .122，握手 1.48 s / 1.52 s）。
+
+## 8. 网络路径与 FlClash（证据前提）
+
+本应用自己**不走**系统代理：Go 的 transport 设 `Proxy=nil`，扫描用裸 `net.Dialer`。
+所以 Windows 上 FlClash 的 system-proxy（127.0.0.1:7890）不会影响我们的测量；但 **TUN/VpnService 会**。
+
+- 开发机：FlClash 是 system-proxy 模式，默认路由仍在 WLAN → 我们的直连证据成立（见 TEST-EVIDENCE「网络路径自检」）。
+- 手机：FlClash 的 `vgate0` 一旦 up，shell/本应用的连接会被 TUN 接管 → 设备侧证据必须在 VPN 关闭时采集；
+  这也是 P6 要验证的 `PROCESS-NAME,<包名>,DIRECT` 规则（否则我们的 API/隧道会被自己的 VPN 再抓一次）。
