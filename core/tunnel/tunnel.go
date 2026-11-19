@@ -14,9 +14,9 @@ import (
 	"strings"
 	"time"
 
+	utls "github.com/refraction-networking/utls"
 	"golang.zx2c4.com/wireguard/device"
 	tnetstack "golang.zx2c4.com/wireguard/tun/netstack"
-	utls "github.com/refraction-networking/utls"
 
 	"github.com/dsh/android-proton/core/stealth"
 )

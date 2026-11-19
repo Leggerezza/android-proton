@@ -54,6 +54,11 @@ type engine struct {
 
 	run    *runState
 	runCfg startConfig
+
+	// scan bookkeeping (P3)
+	scans              *scanState
+	networkFingerprint string
+	lastScanSummary    string
 }
 
 var eng = &engine{

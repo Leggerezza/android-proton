@@ -65,11 +65,11 @@ func (e *APIError) IsAuth() bool {
 
 // Client is a minimal Proton API client with token refresh.
 type Client struct {
-	HTTP      *http.Client
-	VPNBase   string
-	CoreBase  string
+	HTTP       *http.Client
+	VPNBase    string
+	CoreBase   string
 	AppVersion string
-	UserAgent string
+	UserAgent  string
 
 	mu     sync.Mutex
 	tokens Tokens
@@ -79,7 +79,7 @@ type Client struct {
 	// Logf receives human readable progress messages.
 	Logf func(format string, args ...any)
 
-	refreshMu sync.Mutex
+	refreshMu   sync.Mutex
 	lastRefresh time.Time
 }
 

@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/netip"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"golang.zx2c4.com/wireguard/conn"
@@ -26,8 +27,9 @@ type ListenBind struct {
 	cert             tls.Certificate
 	handshakeTimeout time.Duration
 
-	ready     chan struct{}
-	acceptOne sync.Once
+	ready      chan struct{}
+	readyOnce  sync.Once
+	accepting  atomic.Bool
 
 	mu       sync.Mutex
 	conn     *tls.Conn
@@ -77,16 +79,25 @@ func (b *ListenBind) Open(uint16) ([]conn.ReceiveFunc, uint16, error) {
 	if ta, ok := b.ln.Addr().(*net.TCPAddr); ok {
 		port = ta.Port
 	}
-	b.acceptOne.Do(func() { go b.acceptLoop() })
+	if !b.accepting.Swap(true) {
+		go b.acceptLoop()
+	}
 	return []conn.ReceiveFunc{b.receive}, uint16(port), nil
 }
 
+// acceptLoop keeps accepting: a scanner connects twice (L2 TLS probe, then the
+// L3 tunnel), and a client may reconnect after a drop.
 func (b *ListenBind) acceptLoop() {
-	raw, err := b.ln.Accept()
-	if err != nil {
-		b.acceptOne.Do(func() {})
-		return
+	for {
+		raw, err := b.ln.Accept()
+		if err != nil {
+			return
+		}
+		go b.handshake(raw)
 	}
+}
+
+func (b *ListenBind) handshake(raw net.Conn) {
 	tc := tls.Server(raw, &tls.Config{Certificates: []tls.Certificate{b.cert}})
 	_ = tc.SetDeadline(time.Now().Add(b.handshakeTimeout))
 	if err := tc.Handshake(); err != nil {
@@ -96,6 +107,7 @@ func (b *ListenBind) acceptLoop() {
 	_ = tc.SetDeadline(time.Time{})
 
 	b.mu.Lock()
+	old := b.conn
 	b.conn = tc
 	if ra, ok := raw.RemoteAddr().(*net.TCPAddr); ok {
 		if ip, err := netip.ParseAddr(ra.IP.String()); err == nil {
@@ -103,7 +115,10 @@ func (b *ListenBind) acceptLoop() {
 		}
 	}
 	b.mu.Unlock()
-	close(b.ready)
+	if old != nil {
+		_ = old.Close()
+	}
+	b.readyOnce.Do(func() { close(b.ready) })
 }
 
 func (b *ListenBind) waitConn() (*tls.Conn, error) {

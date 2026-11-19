@@ -51,16 +51,16 @@ type Config struct {
 	Port       int    // TCP port, normally 443
 	ServerName string // TLS SNI pinned to this name; empty = rotate the safe pool
 	// ServerNames overrides the pool used when ServerName is empty.
-	ServerNames []string
-	Hello       utls.ClientHelloID
-	DialTimeout time.Duration
+	ServerNames      []string
+	Hello            utls.ClientHelloID
+	DialTimeout      time.Duration
 	HandshakeTimeout time.Duration
 	// Mark is applied to the TCP socket (SO_MARK) on platforms that support it.
 	// Android has no SO_MARK for unprivileged apps, so this is a no-op there.
 	Mark uint32
 	// PostHandshakeDelay overrides defaultPostHandshakeDelay (tests use 0).
 	PostHandshakeDelay time.Duration
-	Logf func(format string, args ...any)
+	Logf               func(format string, args ...any)
 }
 
 // Bind implements wireguard/conn.Bind on top of a single TLS stream. That is

@@ -90,12 +90,12 @@ type udpAssociation struct {
 	srv  *Server
 	conn *net.UDPConn
 
-	mu               sync.Mutex
+	mu                sync.Mutex
 	loggedFirstPacket bool
-	peer     *net.UDPAddr
-	sessions map[string]*udpSession
-	order    []string // oldest first, used as the LRU list
-	closed   bool
+	peer              *net.UDPAddr
+	sessions          map[string]*udpSession
+	order             []string // oldest first, used as the LRU list
+	closed            bool
 }
 
 type udpSession struct {

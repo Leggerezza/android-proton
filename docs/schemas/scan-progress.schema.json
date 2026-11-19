@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/dsh/android-proton/schemas/scan-progress.schema.json",
+  "title": "ScanProgress",
+  "description": "Payload of protonnode.ScanProgress(scanID)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["scanId", "state", "level", "stage", "total", "done", "passed", "startedAt", "elapsedMs"],
+  "properties": {
+    "scanId": { "type": "string", "minLength": 1 },
+    "state": { "type": "string", "enum": ["running", "done", "cancelled", "failed", "unknown"] },
+    "level": { "type": "integer", "minimum": 1, "maximum": 3 },
+    "stage": { "type": "string", "enum": ["", "l1", "l2", "l3"] },
+    "total": { "type": "integer", "minimum": 0 },
+    "done": { "type": "integer", "minimum": 0 },
+    "passed": { "type": "integer", "minimum": 0 },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "elapsedMs": { "type": "integer", "minimum": 0 },
+    "error": { "type": "string" }
+  }
+}

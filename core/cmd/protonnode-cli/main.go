@@ -32,6 +32,7 @@ func usage() {
 		"  selftest   connect, fetch a URL through the SOCKS5 port, print the exit IP\n"+
 		"  run        connect and keep the SOCKS5 port open until interrupted\n"+
 		"  udptest    connect, then send a DNS query over SOCKS5 UDP ASSOCIATE (P2)\n"+
+		"  scan       three-level server scan (P3): L1 tcp, L2 tls, L3 real wireguard\n"+
 		"  state      print SessionState() and Status()\n"+
 		"  convert    turn a Windows-baseline state.json into the session JSON this tool takes\n\n"+
 		"Flags are per command; run \"protonnode-cli <command> -h\".\n")
@@ -52,6 +53,8 @@ func main() {
 		err = cmdState(os.Args[2:])
 	case "udptest":
 		err = cmdUDPTest(os.Args[2:])
+	case "scan":
+		err = cmdScan(os.Args[2:])
 	case "convert":
 		err = cmdConvert(os.Args[2:])
 	case "version":
@@ -614,7 +617,7 @@ func splitSocksUDP(b []byte) (frag byte, dst string, payload []byte, err error) 
 // dnsQuery builds a minimal A-record query.
 func dnsQuery(id uint16, name string) []byte {
 	out := binary.BigEndian.AppendUint16(nil, id)
-	out = append(out, 0x01, 0x00) // RD
+	out = append(out, 0x01, 0x00)                         // RD
 	out = append(out, 0x00, 0x01)                         // QDCOUNT
 	out = append(out, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00) // ANCOUNT, NSCOUNT, ARCOUNT
 	for _, label := range splitLabels(name) {
@@ -700,4 +703,69 @@ func dnsParse(target string, msg []byte, id uint16) (int, []string, error) {
 		return 0, nil, fmt.Errorf("DNS response from %s carries no answer (NXDOMAIN/blocked?)", target)
 	}
 	return an, ips, nil
+}
+
+// cmdScan runs the P3 three-level scan, prints progress while it runs and the
+// final JSON, and can cancel itself to prove the "<1s cancel" rule.
+func cmdScan(args []string) error {
+	fs := flag.NewFlagSet("scan", flag.ExitOnError)
+	var c commonFlags
+	c.register(fs)
+	scope := fs.String("scope", "all", "all|US|game|secure-core|name:<server>  (append @1/@2 for a shallower level)")
+	conc := fs.Int("concurrency", 32, "parallel probes")
+	wait := fs.Duration("wait", 240*time.Second, "max time to wait for the scan")
+	cancelAfter := fs.Duration("cancel-after", 0, "cancel the scan after this delay (exercises the 1s rule)")
+	network := fs.String("network", "", "network fingerprint used for the scan cache")
+	_ = fs.Parse(args)
+	if err := c.bootstrap(); err != nil {
+		return err
+	}
+	defer protonnode.Shutdown()
+	if *network != "" {
+		protonnode.SetNetworkFingerprint(*network)
+	}
+	started := time.Now()
+	id, err := protonnode.StartScan(*scope, *conc)
+	if err != nil {
+		return err
+	}
+	fmt.Println("scan:", id)
+
+	lastProgress := ""
+	cancelled := false
+	var cancelResult bool
+	var cancelLatency time.Duration
+	deadline := time.Now().Add(*wait)
+	for {
+		p := protonnode.ScanProgress(id)
+		if p != lastProgress {
+			fmt.Println("progress:", p)
+			lastProgress = p
+		}
+		var st struct {
+			State string `json:"state"`
+		}
+		_ = json.Unmarshal([]byte(p), &st)
+		if st.State == "done" || st.State == "cancelled" || st.State == "failed" {
+			break
+		}
+		if *cancelAfter > 0 && !cancelled && time.Since(started) >= *cancelAfter {
+			t0 := time.Now()
+			cancelResult = protonnode.CancelScan(id)
+			cancelLatency = time.Since(t0)
+			cancelled = true
+			fmt.Printf("cancel: accepted=%v, returned in %s (rule: < 1s)\n", cancelResult, cancelLatency.Round(time.Millisecond))
+		}
+		if time.Now().After(deadline) {
+			protonnode.CancelScan(id)
+			return fmt.Errorf("scan did not finish within %s", *wait)
+		}
+		time.Sleep(400 * time.Millisecond)
+	}
+	fmt.Println("results:", protonnode.ScanResults(id))
+	fmt.Println("last:", protonnode.LastScanSummary())
+	if cancelled {
+		fmt.Printf("cancel latency: %s\n", cancelLatency.Round(time.Millisecond))
+	}
+	return nil
 }

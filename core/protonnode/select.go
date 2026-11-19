@@ -55,8 +55,8 @@ const (
 )
 
 type serverCache struct {
-	At   time.Time               `json:"at"`
-	List []proton.LogicalServer  `json:"list"`
+	At   time.Time              `json:"at"`
+	List []proton.LogicalServer `json:"list"`
 }
 
 // servers returns the logical server list: API first, then the cached copy.
@@ -96,10 +96,10 @@ func (e *engine) servers(ctx context.Context) ([]proton.LogicalServer, error) {
 // one connection attempt.
 func selectCandidates(servers []proton.LogicalServer, cfg *startConfig, tier int) []proton.LogicalServer {
 	base := proton.Filter{
-		Country:        cfg.Country,
-		SecureCore:     cfg.SecureCore,
-		Name:           cfg.Server,
-		TrustTier:      tier,
+		Country:    cfg.Country,
+		SecureCore: cfg.SecureCore,
+		Name:       cfg.Server,
+		TrustTier:  tier,
 	}
 	if cfg.Server != "" || cfg.Country != "" {
 		return proton.Select(servers, base)

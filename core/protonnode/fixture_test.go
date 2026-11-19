@@ -12,10 +12,10 @@ type logicalServer = proton.LogicalServer
 
 func (f protoServerFixture) toLogical() proton.LogicalServer {
 	return proton.LogicalServer{
-		Name:         f.name,
-		ExitCountry:  f.cc,
-		Status:       1,
-		Score:        3,
+		Name:        f.name,
+		ExitCountry: f.cc,
+		Status:      1,
+		Score:       3,
 		Servers: []proton.PhysicalServer{
 			{ID: "p-" + f.name, EntryIP: "203.0.113.7", Status: 1, X25519PublicKey: "a2V5"},
 		},

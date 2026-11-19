@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/dsh/android-proton/schemas/scan-results.schema.json",
+  "title": "ScanResults",
+  "description": "Payload of protonnode.ScanResults(scanID) - PROMPT.md 5.1/5.5",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["scanId", "state", "level", "stage", "fingerprint", "generatedAt", "elapsedMs", "checked", "passed", "results", "cacheHit"],
+  "properties": {
+    "scanId": { "type": "string", "minLength": 1 },
+    "state": { "type": "string", "enum": ["running", "done", "cancelled", "failed", "unknown"] },
+    "level": { "type": "integer", "minimum": 1, "maximum": 3 },
+    "stage": { "type": "string", "enum": ["", "l1", "l2", "l3"] },
+    "fingerprint": { "type": "string" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "elapsedMs": { "type": "integer", "minimum": 0 },
+    "checked": { "type": "integer", "minimum": 0 },
+    "passed": { "type": "integer", "minimum": 0 },
+    "cacheHit": { "type": "boolean" },
+    "error": { "type": "string" },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["server", "entryIP", "port", "level", "rttMs"],
+        "properties": {
+          "server": { "type": "string" },
+          "serverKey": { "type": "string" },
+          "entryIP": { "type": "string" },
+          "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+          "level": { "type": "integer", "minimum": 1, "maximum": 3 },
+          "rttMs": { "type": "integer", "minimum": 0 },
+          "sni": { "type": "string" },
+          "country": { "type": "string" },
+          "score": { "type": "number" },
+          "load": { "type": "integer" }
+        }
+      }
+    }
+  }
+}

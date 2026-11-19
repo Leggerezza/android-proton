@@ -144,16 +144,16 @@ func (c *Client) StealthPort(ctx context.Context) int {
 
 // Filter narrows a server list. The zero value matches every server.
 type Filter struct {
-	Country    string // ISO country code of the exit country
-	EntryCountry string
-	Name       string // exact logical server name, e.g. "CH#10"
-	SecureCore bool
-	RequireP2P bool
-	RequireTor bool
+	Country          string // ISO country code of the exit country
+	EntryCountry     string
+	Name             string // exact logical server name, e.g. "CH#10"
+	SecureCore       bool
+	RequireP2P       bool
+	RequireTor       bool
 	RequireStreaming bool
-	TrustTier  int  // highest tier the account can use (0 = no limit)
-	OnlineOnly bool
-	Search     string
+	TrustTier        int // highest tier the account can use (0 = no limit)
+	OnlineOnly       bool
+	Search           string
 }
 
 func (f Filter) Match(s LogicalServer) bool {

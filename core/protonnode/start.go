@@ -60,6 +60,10 @@ type startConfig struct {
 	// MaxProbe is how many reachable entries to try before giving up on this
 	// round (default 3).
 	MaxProbe int `json:"maxProbe,omitempty"`
+	// ScanLevel is the verification depth used for automatic selection:
+	// 3 (default; PROMPT.md 5.5: only a real WireGuard handshake counts),
+	// 2 or 1 to trade correctness for speed.
+	ScanLevel int `json:"scanLevel,omitempty"`
 }
 
 func (c *startConfig) applyDefaults() error {
@@ -116,6 +120,12 @@ func (c *startConfig) applyDefaults() error {
 	}
 	if c.MaxProbe <= 0 {
 		c.MaxProbe = 3
+	}
+	if c.ScanLevel == 0 {
+		c.ScanLevel = 3
+	}
+	if c.ScanLevel < 1 || c.ScanLevel > 3 {
+		return fmt.Errorf("protonnode: scanLevel %d out of range (1..3)", c.ScanLevel)
 	}
 	return nil
 }
@@ -340,7 +350,10 @@ func (e *engine) connectOnce(ctx context.Context, run *runState) error {
 		return errors.New("no server matches the configured filter")
 	}
 	port := stealthPort()
-	picks := e.probeCandidates(ctx, candidates, port, run.cfg)
+	picks, err := e.pickCandidates(ctx, servers, candidates, run.cfg, port)
+	if err != nil {
+		return err
+	}
 	if len(picks) == 0 {
 		return errors.New("no reachable Proton entry")
 	}
