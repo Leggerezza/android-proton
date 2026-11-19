@@ -5,12 +5,10 @@ import android.content.Context
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.dsh.protonnode.core.CoreController
-import io.github.dsh.protonnode.service.NotificationFactory
 import io.github.dsh.protonnode.data.SessionStore
+import io.github.dsh.protonnode.service.NotificationFactory
 import io.github.dsh.protonnode.service.ProtonService
 import kotlinx.coroutines.runBlocking
-import java.net.InetSocketAddress
-import java.net.Socket
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -18,6 +16,8 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.net.InetSocketAddress
+import java.net.Socket
 
 /**
  * Foreground-service lifecycle (PROMPT.md 5.2 / 6.2). Runs on a device or the
@@ -63,9 +63,10 @@ class ServiceLifecycleTest {
         assertEquals("idle", status.state)
 
         // No listener left behind after Stop (PROMPT.md 5.2).
-        val refused = runCatching {
-            Socket().use { it.connect(InetSocketAddress("127.0.0.1", 1080), 500) }
-        }.isFailure
+        val refused =
+            runCatching {
+                Socket().use { it.connect(InetSocketAddress("127.0.0.1", 1080), 500) }
+            }.isFailure
         assertTrue("127.0.0.1:1080 should be closed after Stop", refused)
     }
 
