@@ -82,3 +82,26 @@ WireGuard handshake completed (PROMPT.md 5.5). The flow is
 3. cache the verified entries for 30 minutes and dial them.
 
 ``scanLevel=1`` keeps the old fast TCP probe for debugging; it is never used by the UI.
+
+## Service lifecycle (P4)
+
+```
+startForegroundService(ACTION_START)
+   -> ProtonService.onCreate: notification channel, NetworkMonitor.start()
+   -> startForeground(specialUse) immediately (5s rule)
+   -> CoreController.ensureInit()  (gomobile Init + encrypted session + API DNS)
+   -> CoreController.start(config) (non-blocking; the Go supervisor owns the state machine)
+   -> poll Status() every 5s and refresh the notification
+
+network change -> NetworkMonitor -> CoreController.setNetworkFingerprint(fp)
+                                   -> stop() + start()   (immediate reconnect, fresh scan)
+ACTION_STOP    -> stop() bounded to 5s -> stopSelf()
+onDestroy      -> Stop() on a worker thread (join <= 5s) -> stopForeground(REMOVE)
+```
+
+``HealthWorker`` (WorkManager, 15 min, best effort) restarts the node when the user wants it
+running but the last status is not connected. ``BootReceiver`` does the same after a reboot or an
+app update when ``Prefs.autoStart`` is on.
+
+Threading (PROMPT.md 5.2): every core call goes through ``CoreController``'s single IO dispatcher;
+the main thread only touches notification/Intent plumbing.

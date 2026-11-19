@@ -56,6 +56,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/), generated with git-clif
 - **P3**: `docs/schemas/scan-{results,progress}.schema.json` plus a conformance test.
 - **P3**: `protonnode-cli scan` command (`-scope`, `-network`, `-cancel-after`).
 
+### Added (P4)
+
+- **P4**: `ProtonService` specialUse foreground service (ongoing silent notification with a
+  Stop action, 5s status refresh, `onDestroy` always stops the node within 5s).
+- **P4**: `NetworkMonitor` - network changes update the scan fingerprint and restart the
+  tunnel immediately instead of waiting for the 60s backoff.
+- **P4**: `SessionStore` with Android Keystore AES-256-GCM for the session JSON;
+  `CoreController` as the single serialised bridge to gomobile.
+- **P4**: `BootReceiver` (opt-in auto start) and `HealthWorker` (WorkManager, best effort).
+- **P4**: JVM unit tests for the notification text and the network fingerprint.
+
 ### Changed
 
 - CI: JDK 25 + Go 1.27.4, ktlint/Android Lint gate, release-APK path fixed for

@@ -1296,9 +1296,75 @@ docs/schemas/scan-progress.schema.json
 - 扫描会真的向 Proton 入口发起 TLS/WireGuard 连接（这就是 L3 的意义），但不会建立数据面、不产生流量。
 - L2 跳过证书校验是 PROMPT §0.4 允许的唯一例外，且只会记一条日志（`bypassOnce`）。
 
-## P4 — 前台服务与生命周期
+## P4 — 前台服务与生命周期（2026-11-19）
 
-`NOT RUN`
+### P4 状态：**已实现，运行时验收仍待设备**
+
+| 项 | 状态 | 证据 |
+|---|---|---|
+| `specialUse` 前台服务 + 常驻通知（含 Stop 动作，5s 刷新） | ✅ 实现并编译进 release APK | P4-E2 合并清单 |
+| `onDestroy` 必定 `Stop()`（≤5s 预算） | ✅ 实现 | `ProtonService.onDestroy`：worker 线程 `withTimeoutOrNull(5s)` 后 `stopForeground` |
+| 网络切换立即重连（不等 60s 退避） | ✅ 实现 | `NetworkMonitor` → `onNetworkChanged` → `stop` + `start`（新指纹、重新扫描） |
+| 充电/Doze 退出触发的健康检查 | ✅ 尽力实现 | `HealthWorker`（WorkManager 15min 周期，best effort） |
+| 开机自启（可选，默认关） | ✅ 实现 | `BootReceiver` + `Prefs.autoStart` |
+| 会话加密存储（Keystore AES-GCM） | ✅ 实现 | `SessionStore`；instrumentation 测试已写好（`SessionStoreTest`） |
+| **运行时**：启动/停止/杀进程/旋转/切网 | ⏳ **NOT RUN**（本机当前无 Android 设备/模拟器） | 见下方的待跑命令 |
+
+### P4-E1 单元测试（JVM，CI 可跑）
+
+```
+io.github.dsh.protonnode.NotificationTextTest: tests=5 failures=0 errors=0
+  - collapsedTextFollowsTheState
+  - detailedTextShowsTheLastErrorWhenNotConnected
+  - detailedTextShowsPortTrafficAndUptime
+  - byteAndUptimeFormatting
+  - fingerprintIsTransportPlusHandle
+```
+
+### P4-E2 release APK 里的合并清单（aapt2 dump）
+
+```
+        A: http://schemas.android.com/apk/res/android:name(0x01010003)="android.permission.FOREGROUND_SERVICE" (Raw: "android.permission.FOREGROUND_SERVICE")
+        A: http://schemas.android.com/apk/res/android:name(0x01010003)="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" (Raw: "android.permission.FOREGROUND_SERVICE_SPECIAL_USE")
+        A: http://schemas.android.com/apk/res/android:name(0x01010003)="android.permission.POST_NOTIFICATIONS" (Raw: "android.permission.POST_NOTIFICATIONS")
+        A: http://schemas.android.com/apk/res/android:name(0x01010003)="android.permission.WAKE_LOCK" (Raw: "android.permission.WAKE_LOCK")
+        A: http://schemas.android.com/apk/res/android:name(0x01010003)="android.permission.RECEIVE_BOOT_COMPLETED" (Raw: "android.permission.RECEIVE_BOOT_COMPLETED")
+            A: http://schemas.android.com/apk/res/android:name(0x01010003)="io.github.dsh.protonnode.service.ProtonService" (Raw: "io.github.dsh.protonnode.service.ProtonService")
+            A: http://schemas.android.com/apk/res/android:foregroundServiceType(0x01010599)=0x40000000
+                    A: http://schemas.android.com/apk/res/android:name(0x01010003)="android.intent.action.BOOT_COMPLETED" (Raw: "android.intent.action.BOOT_COMPLETED")
+                    A: http://schemas.android.com/apk/res/android:name(0x01010003)="android.intent.action.BOOT_COMPLETED" (Raw: "android.intent.action.BOOT_COMPLETED")
+```
+
+> `foregroundServiceType=0x40000000` 就是 `specialUse`（API 34+ 的位）。
+
+### P4-E3 待跑的运行时验收（有设备后执行）
+
+```bash
+# 1. 生命周期（instrumentation）
+./gradlew :app:connectedDebugAndroidTest
+
+# 2. 手工验证服务 + 通知 + Stop
+adb shell am start-foreground-service -n io.github.dsh.protonnode.debug/io.github.dsh.protonnode.service.ProtonService -a io.github.dsh.protonnode.START
+adb shell dumpsys activity services io.github.dsh.protonnode.debug | head -40   # 应看到 isForeground=true
+adb shell dumpsys notification --noredact | grep -A3 protonnode                      # 通知内容
+adb shell am start-service -n io.github.dsh.protonnode.debug/io.github.dsh.protonnode.service.ProtonService -a io.github.dsh.protonnode.STOP
+
+# 3. 杀进程后不得留下隧道/监听
+adb shell am force-stop io.github.dsh.protonnode.debug
+adb shell ss -lntp | grep 1080   # 需要 root；否则看 dumpsys activity services 应为空
+
+# 4. 网络切换：关 Wi-Fi 再开，观察日志里 "network changed ... restarting the tunnel"
+adb logcat -s ProtonService:I NetworkMonitor:I
+```
+
+判定标准（PROMPT §11）：杀进程后无残留监听；旋转不重启节点（P5 有界面后再验）；
+网络切换后 30s 内回到 `connected`；`Stop` 在 5s 内回到 `idle`。
+
+### P4-E4 说明与偏差
+
+- `Prefs` 用 SharedPreferences；`SECURITY.md` 写的是 DataStore。迁移放到 P5（设置页落地时），接口已经收敛在一个类里。
+- `BootReceiver` 从 BOOT_COMPLETED 拉起前台服务在 Android 12+ 可能被限制，因此是 best effort 且被 `runCatching` 包住。
+- 通知刷新在未授予 `POST_NOTIFICATIONS` 时跳过（前台通知本身由 `startForeground` 发出，不受影响）。
 
 ## P5 — UI
 

@@ -16,7 +16,7 @@
 | Proton uid / access / refresh token | Keystore-encrypted prefs | until logout / rotation |
 | Device Ed25519 seed + certificate | Keystore-encrypted prefs | 7 days (cert) |
 | Cached server list | app storage | 7 days |
-| Preferences | DataStore | until cleared |
+| Preferences | SharedPreferences (P4; DataStore migration tracked for P5) | until cleared |
 | Protocol logs (optional) | app storage | ring buffer, redacted |
 
 We never store: the account password, destination domains, traffic contents.

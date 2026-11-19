@@ -6,9 +6,10 @@ into a local SOCKS5 node (`127.0.0.1:1080`) for mihomo / FlClash.
 - Target: OnePlus Pad 4 (OPD2514), OxygenOS 16, arm64-v8a, 16 KB pages
 - Package: `io.github.dsh.protonnode` (debug builds install as `io.github.dsh.protonnode.debug`)
 - Scope: SOCKS5 node only (no VpnService); routing is done by FlClash
-- Status: **P3 done** — real Stealth tunnel + SOCKS5 TCP/UDP + three-level server scan
-  (L1 TCP → L2 TLS → L3 WireGuard) with a 30-minute per-network cache and <1 s cancel.
-  The foreground service (P4) is next; UI waits for the phase gate.
+- Status: **P4 implemented** — background node in a `specialUse` foreground service
+  (notification with Stop, network-change reconnect, boot restart, best-effort health
+  worker, Keystore-encrypted session). Runtime acceptance on a device is still pending
+  (no device attached); UI (P5) is next.
 
 ## Layout
 
