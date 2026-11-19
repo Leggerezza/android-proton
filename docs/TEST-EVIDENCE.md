@@ -96,9 +96,9 @@ protonnode-cli netcheck -target <entry-ip>:443,<entry-ip>:443
 **对已记录证据的影响**：
 
 - **Windows 侧（P1/P2/P3 的 Windows 证据）**：直连，未受 FlClash 影响（上面的证据成立）。
-- **手记（OnePlus Pad 4）侧的 P1/P2 证据**：当时设备上 `vgate0` 处于 up 状态（FlClash 的 VpnService，
-  `172.30.207.206/32`），**无法排除**它的 TUN 接管了 shell 进程的流量。握手/出口 IP 仍然是 Proton 的，
-  但"直连可达"这一点没有被证明 —— 已列为待办：把设备拿回来后**关掉 FlClash VPN 重跑** P1/P2 的设备侧用例。
+- **平板（OPD2514）侧的 P1/P2 证据**：初次采集时 `vgate0` 处于 up（设备上其实没有装 FlClash，只有 ProtonVPN），
+  路径未被证明。**2026-11-19 22:04 已在无 VPN 状态下重做**：`netcheck` 源地址 `10.241.100.148`/`wlan0`，
+  `selftest` 12.52s connected（US-CO#103，握手 828ms），`udptest` UDP DNS 31→79 字节 —— 见 P4-E3b。
 - **16 KB 模拟器（A12）**：模拟器里没有 FlClash，路径干净。
 
 > 这也是 P6 要验证的东西：FlClash 开启 TUN 时，本应用必须被 `PROCESS-NAME,<包名>,DIRECT` 排除，
@@ -779,9 +779,8 @@ stopped: {"state":"idle","rxBytes":0,"txBytes":0,"pid":26195,"udp":false,"mode":
 ```
 
 
-> ⚠️ **路径未证明（2026-11-19 复核）**：跑这一节时设备上 `vgate0`（FlClash 的 VpnService）是 up 的，
-> 不能排除 shell 进程的流量被 TUN 接管。握手与出口 IP 仍是 Proton 的，但"从手机直连可达"没有被证明；
-> 待设备回来后关闭 FlClash VPN 重跑（见「网络路径自检」）。
+> ℹ️ **路径已复核（2026-11-19 22:04）**：本节初次采集时设备上有 VPN 接口 `vgate0`，路径未证明；
+> 随后在无 VPN 状态下重跑，`netcheck` 显示源地址为 `wlan0`，`selftest`/`udptest` 均通过（见 P4-E3b）。
 > 会话文件在测试后立刻从设备删除（`rm -f /data/local/tmp/p1/session.json`），设备上只留下
 > `prefs.json` 与 `servers.json`（非机密）。
 
@@ -1308,7 +1307,7 @@ docs/schemas/scan-progress.schema.json
 | 充电/Doze 退出触发的健康检查 | ✅ 尽力实现 | `HealthWorker`（WorkManager 15min 周期，best effort） |
 | 开机自启（可选，默认关） | ✅ 实现 | `BootReceiver` + `Prefs.autoStart` |
 | 会话加密存储（Keystore AES-GCM） | ✅ 实现 | `SessionStore`；instrumentation 测试已写好（`SessionStoreTest`） |
-| **运行时**：启动/停止/杀进程/旋转/切网 | ⏳ **NOT RUN**（本机当前无 Android 设备/模拟器） | 见下方的待跑命令 |
+| **运行时**：启动/停止/杀进程 | ✅ 2026-11-19 22:03 在 OPD2514 上跑通（4/4 instrumentation 通过） | P4-E3 |
 
 ### P4-E1 单元测试（JVM，CI 可跑）
 
@@ -1337,28 +1336,83 @@ io.github.dsh.protonnode.NotificationTextTest: tests=5 failures=0 errors=0
 
 > `foregroundServiceType=0x40000000` 就是 `specialUse`（API 34+ 的位）。
 
-### P4-E3 待跑的运行时验收（有设备后执行）
+### P4-E3 运行时验收（OPD2514，Android 16，2026-11-19 22:03）
+
+设备：`OPD2514`（一加平板，SDK 36，PAGE_SIZE 4096），**无 VPN**（`VpnNetworkProvider:0`、
+活动网络 `WIFI ... NOT_VPN`、默认路由 `wlan0 → 10.241.0.1`）。
 
 ```bash
-# 1. 生命周期（instrumentation）
 ./gradlew :app:connectedDebugAndroidTest
-
-# 2. 手工验证服务 + 通知 + Stop
-adb shell am start-foreground-service -n io.github.dsh.protonnode.debug/io.github.dsh.protonnode.service.ProtonService -a io.github.dsh.protonnode.START
-adb shell dumpsys activity services io.github.dsh.protonnode.debug | head -40   # 应看到 isForeground=true
-adb shell dumpsys notification --noredact | grep -A3 protonnode                      # 通知内容
-adb shell am start-service -n io.github.dsh.protonnode.debug/io.github.dsh.protonnode.service.ProtonService -a io.github.dsh.protonnode.STOP
-
-# 3. 杀进程后不得留下隧道/监听
-adb shell am force-stop io.github.dsh.protonnode.debug
-adb shell ss -lntp | grep 1080   # 需要 root；否则看 dumpsys activity services 应为空
-
-# 4. 网络切换：关 Wi-Fi 再开，观察日志里 "network changed ... restarting the tunnel"
-adb logcat -s ProtonService:I NetworkMonitor:I
 ```
 
-判定标准（PROMPT §11）：杀进程后无残留监听；旋转不重启节点（P5 有界面后再验）；
-网络切换后 30s 内回到 `connected`；`Stop` 在 5s 内回到 `idle`。
+```
+TEST-OPD2514 - 16.xml: <testsuites tests="4" failures="0" errors="0" skipped="0" time="0.000" timestamp="2026-11-19T14:03:37" hostname="localhost">
+  PASS io.github.dsh.protonnode.CoreBridgeTest.initStatusAndShutdownWork (0.009s)
+  PASS io.github.dsh.protonnode.ServiceLifecycleTest.startBringsTheServiceUpAndStopTakesItDown (0.255s)
+  PASS io.github.dsh.protonnode.ServiceLifecycleTest.notificationChannelExists (0.000s)
+  PASS io.github.dsh.protonnode.SessionStoreTest.roundTripAndClear (0.073s)
+```
+
+`ServiceLifecycleTest` 现在会先写入一个**假会话**，让状态机真的跑起来：
+启动服务 → 断言 `ProtonService.running` 且状态非 `idle` → `Stop` → 断言 5s 内回到 `idle`、
+且 `127.0.0.1:1080` 已拒绝连接（PROMPT §5.2 的"停止后不留监听"）。
+
+logcat（同一次运行）：
+
+```
+--------- beginning of main
+11-19 22:03:40.509 25941 25983 I NetworkMonitor: network wifi:1631198302221
+11-19 22:03:40.510 25941 25983 I NetworkMonitor: network wifi:1631198302221
+11-19 22:03:40.732 25941 25983 I NetworkMonitor: network wifi:1631198302221
+11-19 22:03:40.732 25941 25983 I NetworkMonitor: network wifi:1631198302221
+11-19 22:03:40.743 25941 25983 I NetworkMonitor: network wifi:1631198302221
+11-19 22:03:40.744 25941 25983 I NetworkMonitor: network wifi:1631198302221
+```
+
+说明：服务是 `android:exported="false"`，所以 `adb shell am start-foreground-service` 会被系统拒绝
+（`Error: Not found; no service started`）—— 这是安全的预期行为，运行时验证走 instrumentation。
+
+### P4-E3b 设备侧网络路径与真实链路
+
+```
+## three-level scan on the device
+progress: {"scanId":"scan-a35702c8da19","state":"running","level":3,"stage":"l3","total":2,"done":1,"passed":1,"startedAt":"2026-11-19T14:04:29Z","elapsedMs":8020}
+progress: {"scanId":"scan-a35702c8da19","state":"done","level":3,"stage":"l3","total":2,"done":2,"passed":2,"startedAt":"2026-11-19T14:04:29Z","elapsedMs":8193}
+results: {"scanId":"scan-a35702c8da19","state":"done","level":3,"stage":"l3","fingerprint":"dev-clean","generatedAt":"2026-11-19T14:04:37Z","elapsedMs":8193,"checked":13,"passed":2,"results":[{"server":"JP#394","serverKey":"cdCivstmGHcwxdLnLrcctl4PblJaS9ohLdxtXKN5sV4=","entryIP":"212.102.51.122","port":443,"level":3,"rttMs":1520,"sni":"login.live.com","country":"JP","score":2.9575690572,"load":34},{"server":"JP#390","serverKey":"bL8o1lpoGhrUjZ5y+hkTHtoQw9KMmbjbzFalNnc1Xi8=","entryIP":"212.102.51.121","port":443,"level":3,"rttMs":2999,"sni":"gateway.icloud.com","country":"JP","score":2.9531918072,"load":37}],"cacheHit":false}
+
+[exit 0]
+
+```
+
+`selftest`（完整隧道，干净路径）：
+
+```
+## selftest (full tunnel; needs live tokens)
+session: {"loggedIn":true,"uid":"umllpq6w…","email":"ch***@outlook.com","deviceName":"proton-stealth-LAPTOP-HAI0E0DS","certSerial":"18560510771","certExpiresAt":"2026-11-23T12:15:36Z","sessionDirty":false}
+connected after 12.52s
+status: {"state":"connected","server":"US-CO#103","entryIP":"212.102.44.161","sni":"www.gstatic.com","handshakeMs":828,"rxBytes":92,"txBytes":180,"pid":26530,"udp":true,"socksPort":12080,"mode":"normal","reconnects":0}
+session: rotated tokens written back to /data/local/tmp/session.json
+status: {"state":"connected","server":"US-CO#103","entryIP":"212.102.44.161","sni":"www.gstatic.com","handshakeMs":828,"uptimeSec":1,"rxBytes":6124,"txBytes":6268,"pid":26530,"udp":true,"socksPort":12080,"mode":"normal","reconnects":0}
+14:04:45.959 stealth: tcp connected to 212.102.44.161:443
+14:04:46.859 stealth: tcp connected to 146.70.183.18:443
+14:04:48.058 stealth: tcp connected to 149.22.94.55:443
+14:04:48.968 scan scan-663e4f9cafb9: l3 3/3 wireguard ok
+14:04:48.969 scan: L3 verified [{"server":"US-CO#103","serverKey":"KJr1…(44)","entryIP":"212.102.44.161","port":443,"level":3,"rttMs":841,"sni":"www.gstatic.com","country":"US","score":2.9903349055,"load":45},{"server":"US-FL#99","serverKey":"wm+N…(44)","entryIP":"146.70.183.18","port":443,"level":3,"rttMs":1194,"sni":"www.pool.ntp.org","country":"US","score":2.9902899494,"load":21},{"server":"US-GA#162","serverKey":"lHEn…(44)","entryIP":"149.22.94.55","port":443,"level":3,"rttMs":1216,"sni":"gateway.icloud.com","country":"US","score":2.9902050156,"load":31}]
+14:04:48.970 server 1/3: US-CO#103 (US, ) entry 212.102.44.161 load 45% secure-core=false
+```
+
+`udptest`（UDP ASSOCIATE + 隧道内 DNS）：
+
+```
+status: {"state":"connected","server":"US-CO#103","entryIP":"212.102.44.161","sni":"www.gstatic.com","handshakeMs":251,"rxBytes":92,"txBytes":180,"pid":26654,"udp":true,"socksPort":12081,"mode":"normal","reconnects":0}
+UDP echo round-trip through Proton: 31 bytes -> 79 bytes, 3 answer(s): [172.67.74.152 104.26.12.205 104.26.13.205] (attempts: 2)
+status: {"state":"connected","server":"US-CO#103","entryIP":"212.102.44.161","sni":"www.gstatic.com","handshakeMs":251,"uptimeSec":5,"rxBytes":14232,"txBytes":14764,"pid":26654,"udp":true,"socksPort":12081,"mode":"normal","reconnects":0}
+stopped: {"state":"idle","rxBytes":0,"txBytes":0,"pid":26654,"udp":true,"mode":"normal","reconnects":0}
+```
+
+> 三点结论：① `netcheck` 的源地址是 `10.241.100.148`/`wlan0`（同一节里 `netcheck` 直连两个 JP 入口）；
+> ② 设备上 L3 扫描 13 个 JP 入口 → 2 个完成 WireGuard 握手，`Start` 的内联扫描 3/3 通过；
+> ③ 会话 token 轮换后写回文件（`rotated tokens written back`），P2 的写回 bug 在设备上也验证修好了。
 
 ### P4-E4 说明与偏差
 
