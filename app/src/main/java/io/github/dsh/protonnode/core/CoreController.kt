@@ -91,6 +91,64 @@ object CoreController {
             runCatching { Protonnode.setAPIDNS(server) }
         }
 
+    suspend fun login(
+        user: String,
+        pass: String,
+        totp: String,
+    ): Result<String> = withContext(io) { runCatching { Protonnode.login(user, pass, totp) } }
+
+    suspend fun logout(): Result<Unit> = withContext(io) { runCatching { Protonnode.logout() }.map { } }
+
+    /**
+     * Persists a rotated session. Proton refresh tokens are single-use, so the
+     * app must write back every rotation or the next start fails with 2001
+     * (the same bug the CLI had in P2).
+     */
+    suspend fun persistSession(store: io.github.dsh.protonnode.data.SessionStore): Boolean =
+        withContext(io) {
+            val json = runCatching { Protonnode.sessionJSON() }.getOrNull() ?: return@withContext false
+            if (json.isEmpty() || json == lastSavedSession) return@withContext false
+            store.save(json)
+            lastSavedSession = json
+            true
+        }
+
+    @Volatile
+    private var lastSavedSession: String? = null
+
+    suspend fun listServers(
+        country: String,
+        secureCore: Boolean,
+    ): String =
+        withContext(io) {
+            runCatching { Protonnode.listServers(country, secureCore) }.getOrDefault("[]")
+        }
+
+    suspend fun startScan(
+        scope: String,
+        concurrency: Int,
+    ): String = withContext(io) { Protonnode.startScan(scope, concurrency.toLong()) }
+
+    suspend fun scanProgress(scanId: String): String =
+        withContext(io) {
+            runCatching { Protonnode.scanProgress(scanId) }.getOrDefault("{}")
+        }
+
+    suspend fun scanResults(scanId: String): String =
+        withContext(io) {
+            runCatching { Protonnode.scanResults(scanId) }.getOrDefault("{}")
+        }
+
+    suspend fun cancelScan(scanId: String): Boolean =
+        withContext(io) {
+            runCatching { Protonnode.cancelScan(scanId) }.getOrDefault(false)
+        }
+
+    suspend fun lastScanSummary(): String =
+        withContext(io) {
+            runCatching { Protonnode.lastScanSummary() }.getOrDefault("{}")
+        }
+
     /** Called when the process is about to go away (PROMPT.md 5.2). */
     suspend fun shutdown() =
         withContext(io) {

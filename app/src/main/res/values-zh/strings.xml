@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Proton 节点</string>
+    <string name="channel_name">节点状态</string>
+    <string name="channel_description">本地 SOCKS5 节点的常驻状态</string>
+    <string name="action_stop">停止</string>
+
+    <string name="nav_home">首页</string>
+    <string name="nav_servers">服务器</string>
+    <string name="nav_scan">扫描</string>
+    <string name="nav_settings">设置</string>
+    <string name="nav_logs">日志</string>
+
+    <string name="state_idle">已停止</string>
+    <string name="state_scanning">正在扫描…</string>
+    <string name="state_connecting">正在连接…</string>
+    <string name="state_connected">已连接</string>
+    <string name="state_reconnecting">正在重连…</string>
+
+    <string name="action_connect">连接</string>
+    <string name="action_disconnect">断开</string>
+    <string name="home_served_port">SOCKS5 监听 127.0.0.1:%1$d</string>
+    <string name="home_server">服务器</string>
+    <string name="home_entry">入口</string>
+    <string name="home_handshake">握手</string>
+    <string name="home_uptime">运行时长</string>
+    <string name="home_traffic">流量</string>
+    <string name="home_mode">模式</string>
+    <string name="home_no_session">还没有 Proton 会话。请在 设置 → 账户 中登录。</string>
+    <string name="home_last_error">最近错误</string>
+
+    <string name="servers_title">服务器</string>
+    <string name="servers_mode_normal">普通</string>
+    <string name="servers_mode_game">游戏</string>
+    <string name="servers_search">按国家或名称搜索</string>
+    <string name="servers_empty">没有匹配的服务器。</string>
+    <string name="servers_not_signed_in">登录后才能加载服务器列表。</string>
+    <string name="servers_secure_core">安全核心</string>
+
+    <string name="scan_title">扫描</string>
+    <string name="scan_scope">范围</string>
+    <string name="scan_scope_all">全部</string>
+    <string name="scan_scope_game">游戏顺序</string>
+    <string name="scan_scope_secure">安全核心</string>
+    <string name="scan_start">开始扫描</string>
+    <string name="scan_cancel">取消</string>
+    <string name="scan_stage">阶段 %1$s · %2$d / %3$d · 通过 %4$d</string>
+    <string name="scan_no_results">还没有验证通过的入口。</string>
+    <string name="scan_level_hint">只有完成 WireGuard 握手（L3）的入口才算通过。</string>
+
+    <string name="settings_title">设置</string>
+    <string name="settings_appearance">外观</string>
+    <string name="settings_theme">主题</string>
+    <string name="settings_theme_system">跟随系统</string>
+    <string name="settings_theme_light">浅色</string>
+    <string name="settings_theme_dark">深色</string>
+    <string name="settings_dynamic">Material You 动态取色</string>
+    <string name="settings_language">语言</string>
+    <string name="settings_language_system">跟随系统</string>
+    <string name="settings_behavior">行为</string>
+    <string name="settings_mode">隧道模式</string>
+    <string name="settings_autostart">开机自启</string>
+    <string name="settings_api_dns">API DNS 服务器（可选）</string>
+    <string name="settings_api_dns_hint">例如 10.0.2.3 或 172.26.26.3；留空则使用系统解析器</string>
+    <string name="settings_account">账户</string>
+    <string name="settings_session">会话</string>
+    <string name="settings_signed_in">已登录：%1$s</string>
+    <string name="settings_signed_out">未登录</string>
+    <string name="settings_logout">退出登录</string>
+    <string name="settings_export">导出配置</string>
+    <string name="settings_import">导入配置</string>
+    <string name="settings_battery">电池优化</string>
+    <string name="settings_battery_hint">允许节点在后台持续运行。</string>
+    <string name="settings_debug_session">开发者：导入会话 JSON</string>
+
+    <string name="logs_title">日志</string>
+    <string name="logs_refresh">刷新</string>
+    <string name="logs_copy">复制</string>
+    <string name="logs_empty">暂无日志。</string>
+    <string name="logs_secure_note">此页面禁止截屏。</string>
+
+    <string name="dialog_cancel">取消</string>
+    <string name="dialog_ok">确定</string>
+    <string name="dialog_import">导入</string>
+    <string name="export_copied">配置已复制到剪贴板。</string>
+    <string name="import_invalid">配置文件无效。</string>
+    <string name="import_confirm">导入会覆盖当前偏好，继续？</string>
+    <string name="session_saved">会话已接受。</string>
+    <string name="session_failed">会话被拒绝：%1$s</string>
+<string name="settings_email">邮箱</string>
+<string name="settings_password">密码</string>
+<string name="settings_totp">两步验证码（如已开启）</string>
+<string name="settings_sign_in">登录</string>
+</resources>

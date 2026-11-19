@@ -13,6 +13,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import io.github.dsh.protonnode.core.CoreController
 import io.github.dsh.protonnode.data.Prefs
+import io.github.dsh.protonnode.data.SessionStore
 import io.github.dsh.protonnode.net.NetworkMonitor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -40,6 +41,11 @@ import kotlin.concurrent.thread
 class ProtonService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var pollJob: Job? = null
+
+    /** Last fingerprint we acted on; ConnectivityManager repeats callbacks, so
+     *  identical values must not restart the tunnel. */
+    @Volatile
+    private var lastFingerprint: String? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -85,6 +91,8 @@ class ProtonService : Service() {
                 while (isActive) {
                     val status = CoreController.status()
                     updateNotification(status)
+                    // Proton refresh tokens are single-use: write back every rotation.
+                    CoreController.persistSession(SessionStore(applicationContext))
                     delay(POLL_INTERVAL_MS)
                 }
             }
@@ -114,11 +122,16 @@ class ProtonService : Service() {
      */
     private fun onNetworkChanged(fingerprint: String) {
         if (!running) return
+        if (fingerprint == lastFingerprint) return
+        val changed = lastFingerprint != null
+        lastFingerprint = fingerprint
         val config = Prefs(this).lastConfigJson
         Prefs(this).networkFingerprint = fingerprint
         scope.launch {
             CoreController.setNetworkFingerprint(fingerprint)
-            if (CoreController.lastStatus.isRunning) {
+            // The first observation is just the current network; only a real
+            // change invalidates the tunnel (PROMPT.md 5.5 / 6.2).
+            if (changed && CoreController.lastStatus.isRunning) {
                 Log.i(TAG, "network changed to " + fingerprint + ", restarting the tunnel")
                 withTimeoutOrNull(STOP_BUDGET_MS) { CoreController.stop() }
                 CoreController.start(config)

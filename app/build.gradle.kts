@@ -4,6 +4,7 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.ktlint)
+    alias(libs.plugins.compose.compiler)
 }
 
 ktlint {
@@ -26,6 +27,10 @@ val keystoreProperties =
     }
 
 android {
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
     namespace = "io.github.dsh.protonnode"
     compileSdk = 36
     // Pinned to the NDK that produced the P1 evidence (r28c, 16 KB ready).
@@ -105,6 +110,15 @@ dependencies {
     // (core-x86_64.aar, produced by scripts/build-core-aar.sh with -target=android/amd64).
     val emulatorAbi = providers.gradleProperty("emulatorAbi").orNull
     implementation(libs.androidx.core.ktx)
+    implementation(libs.appcompat)
+    implementation(libs.activity.compose)
+    implementation(libs.lifecycle.runtime.compose)
+    implementation(platform(libs.compose.bom))
+    implementation(libs.compose.ui)
+    implementation(libs.compose.ui.tooling.preview)
+    implementation(libs.compose.material3)
+    implementation(libs.compose.material.icons.extended)
+    debugImplementation(libs.compose.ui.tooling)
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.kotlinx.coroutines.android)
 
@@ -119,6 +133,8 @@ dependencies {
     // runs the Go runtime inside an app process on a device ("A1" in
     // docs/P0-AUDIT.md). No UI is involved.
     testImplementation(libs.junit)
+    // Android ships org.json; the JVM unit tests need a real implementation.
+    testImplementation("org.json:json:20240303")
 
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.1")

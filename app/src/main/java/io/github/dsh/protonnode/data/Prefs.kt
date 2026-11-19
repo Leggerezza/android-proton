@@ -31,6 +31,19 @@ class Prefs(
         get() = prefs.getString(KEY_FINGERPRINT, "") ?: ""
         set(value) = prefs.edit().putString(KEY_FINGERPRINT, value).apply()
 
+    /** Tunnel mode: "game" (default) or "normal" (PROMPT.md 7). */
+    var mode: String
+        get() = prefs.getString(KEY_MODE, "game") ?: "game"
+        set(value) = prefs.edit().putString(KEY_MODE, value).apply()
+
+    var themeMode: String
+        get() = prefs.getString(KEY_THEME, "system") ?: "system"
+        set(value) = prefs.edit().putString(KEY_THEME, value).apply()
+
+    var dynamicColor: Boolean
+        get() = prefs.getBoolean(KEY_DYNAMIC, true)
+        set(value) = prefs.edit().putBoolean(KEY_DYNAMIC, value).apply()
+
     var wantRunning: Boolean
         get() = prefs.getBoolean(KEY_WANT_RUNNING, false)
         set(value) = prefs.edit().putBoolean(KEY_WANT_RUNNING, value).apply()
@@ -44,5 +57,8 @@ class Prefs(
         private const val KEY_API_DNS = "api_dns"
         private const val KEY_FINGERPRINT = "network_fingerprint"
         private const val KEY_WANT_RUNNING = "want_running"
+        private const val KEY_THEME = "theme_mode"
+        private const val KEY_MODE = "tunnel_mode"
+        private const val KEY_DYNAMIC = "dynamic_color"
     }
 }
