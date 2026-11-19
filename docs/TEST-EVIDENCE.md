@@ -773,6 +773,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-16kb-emulator
 脚本会：确认镜像/AVD（缺则创建）→ 启模拟器 → 等 `sys.boot_completed` → **校验 `getconf PAGE_SIZE`=16384**
 → 装 `app-debug.apk` 与测试 APK → 跑 `am instrument` → 打印 PASS/FAIL。任何一步不满足就非零退出。
 
+脚本第一版有个 bug（2026-11-19 实测）：PowerShell 的 `$ErrorActionPreference="Stop"` 会把 adb 打到 stderr 的
+`adb.exe: device offline` 当成**终止错误**，于是脚本在第一次轮询就退出，看起来像“脚本坏了”。
+已修：所有 adb 调用走 `Invoke-Adb`（临时切 Continue、捕获输出与退出码、绝不抛），轮询期间每 15s 打印一次
+adb 状态，失败时打印 adb devices + 模拟器日志尾部；新增 `-ShowWindow`（有的宿主无法 headless 启动）与 `-GpuMode` 两个开关。
+语法已用 `[System.Management.Automation.Language.Parser]::ParseFile` 校验通过。
 还差的那一步只可能来自：**交互式桌面会话**（本代理进程不在前台桌面会话里，这很可能是 guest 起不来的原因），
 或者另一台机器 / 一台 16 KB 页真机。
 **仍未验证，不得当成结论**：A6（netstack UDP，P2）、A10（OxygenOS 保活，P4）、
