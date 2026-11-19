@@ -14,6 +14,7 @@ core/bin/
 
 # gomobile build artifacts (produced by scripts/build-core-aar.sh)
 app/libs/*.aar
+app/libs/*.jar
 *.test
 *.out
 # test vectors are source, not build output (PROMPT.md 9.5)
