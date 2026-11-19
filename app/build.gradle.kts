@@ -104,6 +104,10 @@ dependencies {
     // arm64 for devices (core.aar), or the matching ABI for an emulator run
     // (core-x86_64.aar, produced by scripts/build-core-aar.sh with -target=android/amd64).
     val emulatorAbi = providers.gradleProperty("emulatorAbi").orNull
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.kotlinx.coroutines.android)
+
     val coreAar = if (emulatorAbi == null) file("libs/core.aar") else file("libs/core-$emulatorAbi.aar")
     if (coreAar.exists()) {
         implementation(files(coreAar))
@@ -114,6 +118,8 @@ dependencies {
     // Instrumentation smoke test: proves the gomobile bridge actually loads and
     // runs the Go runtime inside an app process on a device ("A1" in
     // docs/P0-AUDIT.md). No UI is involved.
+    testImplementation(libs.junit)
+
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.1")
 }
