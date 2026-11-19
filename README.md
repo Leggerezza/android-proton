@@ -6,9 +6,9 @@ into a local SOCKS5 node (`127.0.0.1:1080`) for mihomo / FlClash.
 - Target: OnePlus Pad 4 (OPD2514), OxygenOS 16, arm64-v8a, 16 KB pages
 - Package: `io.github.dsh.protonnode` (debug builds install as `io.github.dsh.protonnode.debug`)
 - Scope: SOCKS5 node only (no VpnService); routing is done by FlClash
-- Status: **P2 done** — real Proton Stealth tunnel + SOCKS5 **TCP and UDP**, verified on
-  Windows and on the device (curl -x socks5h, and a real UDP DNS round-trip).
-  Scanning (P3) and the foreground service (P4) are next; UI waits for the phase gate.
+- Status: **P3 done** — real Stealth tunnel + SOCKS5 TCP/UDP + three-level server scan
+  (L1 TCP → L2 TLS → L3 WireGuard) with a 30-minute per-network cache and <1 s cancel.
+  The foreground service (P4) is next; UI waits for the phase gate.
 
 ## Layout
 
@@ -63,6 +63,7 @@ go build -o protonnode-cli ./core/cmd/protonnode-cli
 ./protonnode-cli convert -from <windows state.json> -out session.json
 ./protonnode-cli selftest -state session.json -cfg ./cfg -socks 11080 -mode normal
 ./protonnode-cli udptest -state session.json -cfg ./cfg -socks 11080 -mode normal
+./protonnode-cli scan -state session.json -cfg ./cfg -scope JP -network home-wifi
 
 # device (cross-compiled, no cgo: Android has no /etc/resolv.conf for Go's pure resolver)
 GOOS=android GOARCH=arm64 CGO_ENABLED=0 go build -o cli ./core/cmd/protonnode-cli

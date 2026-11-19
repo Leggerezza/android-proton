@@ -45,6 +45,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/), generated with git-clif
 - **protonnode-cli** now writes rotated tokens back to `-state` (Proton refresh tokens are
   single-use; not persisting them made the next run fail with 401/2001).
 
+### Added (P3)
+
+- **P3**: three-level server scan - L1 TCP, L2 real TLS (utls Chrome + rotated safe SNI),
+  L3 complete WireGuard handshake; only L3 counts for automatic selection.
+- **P3**: per-network result cache (fingerprint + level, TTL 30 min) in `scan-cache.json`,
+  cache-hit scans return in 0 ms with `cacheHit: true`.
+- **P3**: `StartScan` / `ScanProgress` / `ScanResults` / `CancelScan` / `LastScanSummary`
+  (cancel measured at 1 ms) and `SetNetworkFingerprint`.
+- **P3**: `docs/schemas/scan-{results,progress}.schema.json` plus a conformance test.
+- **P3**: `protonnode-cli scan` command (`-scope`, `-network`, `-cancel-after`).
+
 ### Changed
 
 - CI: JDK 25 + Go 1.27.4, ktlint/Android Lint gate, release-APK path fixed for

@@ -1068,9 +1068,140 @@ PASS
 | 5 | `gonet.TCPConn` 实现了 `CloseWrite` | A13 关闭：SOCKS5 TCP 的 half-close 在隧道内可用 |
 
 
-## P3 — 扫描（三级/取消/缓存）
+## P3 — 扫描（三级/取消/缓存）（2026-11-19）
 
-`NOT RUN`
+### P3 判定（PROMPT.md 5.5 / 11）
+
+| 判定项 | 结果 | 证据 |
+|---|---|---|
+| L1 TCP → L2 TLS → L3 真实 WireGuard 握手 | ✅ 真实 Proton：13 个 JP 入口 → L3 验证出 2 个 | P3-E2 |
+| 自动选服只认 L3 | ✅ `Start` 默认 `scanLevel=3`，L3 结果进缓存后才用于选服 | P3-E1 / P3-E2 |
+| 取消 1s 内生效 | ✅ `CancelScan` 实测返回 **1 ms**，状态 `cancelled` | P3-E3 |
+| 缓存键 = 网络指纹 + 级别 + 时间，TTL 30min | ✅ 同网络二次扫描 0 ms 命中，`cacheHit: true`；换网络不复用 | P3-E4 / P3-E1 |
+| JSON schema | ✅ 两个 schema 文件 + 单测逐字段校验（含未知 scanId 的兜底负载） | P3-E5 |
+
+### P3-E1 core 的 vet 与测试
+
+```bash
+cd core && go vet ./... && go test ./... -count=1 -v
+```
+
+```
+[... 38 lines omitted ...]
+=== RUN   TestUDPAssociateEcho
+--- PASS: TestUDPAssociateEcho (0.00s)
+=== RUN   TestUDPAssociateDropsFragment
+--- PASS: TestUDPAssociateDropsFragment (0.40s)
+=== RUN   TestUDPAssociateRejectedWithoutDialer
+--- PASS: TestUDPAssociateRejectedWithoutDialer (0.00s)
+=== RUN   TestAssociationLRUAndIdle
+--- PASS: TestAssociationLRUAndIdle (0.40s)
+=== RUN   TestUDPAssociateConcurrentTargets
+--- PASS: TestUDPAssociateConcurrentTargets (0.00s)
+=== RUN   TestUDPAssociateDiesWithControlConnection
+--- PASS: TestUDPAssociateDiesWithControlConnection (0.20s)
+=== RUN   TestServerClosesListenerOnCancel
+--- PASS: TestServerClosesListenerOnCancel (0.10s)
+PASS
+ok  	github.com/dsh/android-proton/core/socks5	1.160s
+=== RUN   TestFrameRoundTrip
+--- PASS: TestFrameRoundTrip (0.00s)
+=== RUN   TestHandshakeFrameIsNormal
+--- PASS: TestHandshakeFrameIsNormal (0.00s)
+=== RUN   TestDecodeRejectsGarbage
+--- PASS: TestDecodeRejectsGarbage (0.00s)
+PASS
+ok  	github.com/dsh/android-proton/core/stealth	0.046s
+=== RUN   TestWriteJSONIsAtomicAndPrivate
+--- PASS: TestWriteJSONIsAtomicAndPrivate (0.01s)
+=== RUN   TestNewRejectsEmptyDir
+--- PASS: TestNewRejectsEmptyDir (0.00s)
+PASS
+ok  	github.com/dsh/android-proton/core/store	0.053s
+=== RUN   TestTCPHalfCloseThroughTunnel
+ERROR: wg: 2026/11/19 13:26:16 peer(zOd+…KREw) - Failed to send data packets: use of closed network connection
+--- PASS: TestTCPHalfCloseThroughTunnel (0.69s)
+=== RUN   TestStealthTunnelEndToEnd
+    integration_test.go:132: handshake ok in 250ms (SNI fonts.gstatic.com)
+ERROR: wg: 2026/11/19 13:26:17 peer(weyw…aEgU) - Failed to send data packets: use of closed network connection
+ERROR: srv: 2026/11/19 13:26:17 peer(cIMB…EfG8) - Failed to send data packets: stealth(listen): write: write tcp 127.0.0.1:54584->127.0.0.1:54593: wsasend: An established connection was aborted by the software in your host machine.
+ERROR: srv: 2026/11/19 13:26:17 Bind close failed: tls: failed to send closeNotify alert (but connection was closed anyway): write tcp 127.0.0.1:54584->127.0.0.1:54593: wsasend: An established connection was aborted by the software in your host machine.
+--- PASS: TestStealthTunnelEndToEnd (0.69s)
+=== RUN   TestUDPThroughTunnel
+--- PASS: TestUDPThroughTunnel (0.69s)
+PASS
+ok  	github.com/dsh/android-proton/core/tunnel	2.129s
+
+[exit 0]
+```
+
+> 31 个测试全 PASS。新增：`scan` 包的 L1/L2 本地 TLS、L3 本地 Stealth 隧道、取消 <1s、缓存有效性，
+> 以及 `protonnode` 的 JSON schema 一致性测试（schema 文件在 `docs/schemas/`）。
+
+### P3-E2 真实 Proton 的三级扫描（JP）
+
+```powershell
+protonnode-cli scan -state session.json -cfg cfg-win5 -scope JP -network test-wifi -wait 180s
+```
+
+```
+[... 16 lines omitted ...]
+progress: {"scanId":"scan-8a0b2c8bf4e9","state":"running","level":3,"stage":"l3","total":2,"done":1,"passed":1,"startedAt":"2026-11-19T05:25:02Z","elapsedMs":5605}
+progress: {"scanId":"scan-8a0b2c8bf4e9","state":"running","level":3,"stage":"l3","total":2,"done":1,"passed":1,"startedAt":"2026-11-19T05:25:02Z","elapsedMs":6005}
+progress: {"scanId":"scan-8a0b2c8bf4e9","state":"running","level":3,"stage":"l3","total":2,"done":1,"passed":1,"startedAt":"2026-11-19T05:25:02Z","elapsedMs":6405}
+progress: {"scanId":"scan-8a0b2c8bf4e9","state":"done","level":3,"stage":"l3","total":2,"done":2,"passed":2,"startedAt":"2026-11-19T05:25:02Z","elapsedMs":6626}
+results: {"scanId":"scan-8a0b2c8bf4e9","state":"done","level":3,"stage":"l3","fingerprint":"test-wifi","generatedAt":"2026-11-19T05:25:09Z","elapsedMs":6626,"checked":13,"passed":2,"results":[{"server":"JP#390","serverKey":"bL8o1lpoGhrUjZ5y+hkTHtoQw9KMmbjbzFalNnc1Xi8=","entryIP":"212.102.51.121","port":443,"level":3,"rttMs":1478,"sni":"gateway.icloud.com","country":"JP","score":2.9531918072,"load":37},{"server":"JP#394","serverKey":"cdCivstmGHcwxdLnLrcctl4PblJaS9ohLdxtXKN5sV4=","entryIP":"212.102.51.122","port":443,"level":3,"rttMs":1517,"sni":"login.live.com","country":"JP","score":2.9575690572,"load":34}],"cacheHit":false}
+last: {"scanId":"scan-8a0b2c8bf4e9","state":"done","level":3,"stage":"l3","fingerprint":"test-wifi","generatedAt":"2026-11-19T05:25:09Z","elapsedMs":6626,"checked":13,"passed":2,"results":[{"server":"JP#390","serverKey":"bL8o1lpoGhrUjZ5y+hkTHtoQw9KMmbjbzFalNnc1Xi8=","entryIP":"212.102.51.121","port":443,"level":3,"rttMs":1478,"sni":"gateway.icloud.com","country":"JP","score":2.9531918072,"load":37},{"server":"JP#394","serverKey":"cdCivstmGHcwxdLnLrcctl4PblJaS9ohLdxtXKN5sV4=","entryIP":"212.102.51.122","port":443,"level":3,"rttMs":1517,"sni":"login.live.com","country":"JP","score":2.9575690572,"load":34}],"cacheHit":false}
+
+[exit 0]
+```
+
+> 13 个 JP 入口：L1 全过、L2 过滤、L3 只有 `JP#390`（212.102.51.121）与 `JP#394`（212.102.51.122）
+> 完成了 WireGuard 握手（1.48 s / 1.52 s），SNI 分别是 `gateway.icloud.com` / `login.live.com`。
+
+### P3-E3 取消语义
+
+```powershell
+protonnode-cli scan -scope all -network test-wifi2 -cancel-after 1s -wait 60s
+```
+
+```
+scan: scan-05adba9cdc76
+progress: {"scanId":"scan-05adba9cdc76","state":"running","level":3,"stage":"l1","total":1043,"done":0,"passed":0,"startedAt":"2026-11-19T05:25:48Z","elapsedMs":0}
+cancel: accepted=true, returned in 1ms (rule: < 1s)
+progress: {"scanId":"scan-05adba9cdc76","state":"cancelled","level":3,"stage":"l1","total":1043,"done":27,"passed":0,"startedAt":"2026-11-19T05:25:48Z","elapsedMs":0}
+```
+
+> `CancelScan` 返回 true 且 **1 ms** 内完成（规则要求 < 1 s），扫描状态置为 `cancelled`，
+> 未完成的 1000+ 目标不再继续。
+
+### P3-E4 缓存命中（同网络、30 分钟内）
+
+```
+scan: scan-cache-20261119T052546Z
+results: {"scanId":"scan-cache-20261119T052546Z","state":"done","level":3,"stage":"l3","fingerprint":"test-wifi","generatedAt":"2026-11-19T05:25:46Z","elapsedMs":0,"checked":0,"passed":2,"results":[{"server":"JP#390","serverKey":"bL8o1lpoGhrUjZ5y+hkTHtoQw9KMmbjbzFalNnc1Xi8=","entryIP":"212.102.51.121","port":443,"level":3,"rttMs":1478,"sni":"gateway.icloud.com","country":"JP","score":2.9531918072,"load":37},{"server":"JP#394","serverKey":"cdCivstmGHcwxdLnLrcctl4PblJaS9ohLdxtXKN5sV4=","entryIP":"212.102.51.122","port":443,"level":3,"rttMs":1517,"sni":"login.live.com","country":"JP","score":2.9575690572,"load":34}],"cacheHit":true}
+```
+
+> 第二次同一网络扫描直接返回 `scan-cache-…`，`elapsedMs: 0`、`cacheHit: true`，结果与首次一致；
+> 换网络指纹（`-network test-wifi2`）不会命中（见 P3-E3 那次重新扫了 1043 个目标）。
+
+### P3-E5 JSON schema
+
+```
+docs/schemas/scan-results.schema.json
+docs/schemas/scan-progress.schema.json
+```
+
+`TestScanPayloadsMatchSchema` 读取这两个文件，逐项检查 `required` 字段存在、`state`/`stage` 落在枚举内、
+没有 schema 之外的多余字段（`additionalProperties: false`），并对 `ScanProgress("scan-dead")` 这类
+未知 id 的兜底负载同样校验 —— 这样文档和代码不会各说各话。
+
+### P3-E6 说明
+
+- 模拟器/真机在这次 P3 收尾时都已断开（`adb devices` 为空），所以本节的真实链路证据来自 Windows；
+  `scan` 与隧道用的是同一套 `stealth`/`tunnel` 代码，而那两个包已在 16 KB 模拟器上跑过（P2 的证据）。
+- 扫描会真的向 Proton 入口发起 TLS/WireGuard 连接（这就是 L3 的意义），但不会建立数据面、不产生流量。
+- L2 跳过证书校验是 PROMPT §0.4 允许的唯一例外，且只会记一条日志（`bypassOnce`）。
 
 ## P4 — 前台服务与生命周期
 

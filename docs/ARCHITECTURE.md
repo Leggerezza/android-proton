@@ -71,3 +71,14 @@ mihomo --UDP--> 127.0.0.1:<relay port>     (one socket per association)
 The relay owns one UDP socket per association and one connected netstack socket per
 destination. A destination that stays idle for 120s is recycled, which keeps the
 source port stable for a game that keeps talking to the same server.
+
+## Server selection (P3)
+
+``Start()`` defaults to ``scanLevel=3``: automatic selection only trusts an entry whose
+WireGuard handshake completed (PROMPT.md 5.5). The flow is
+
+1. fresh ``scan-cache.json`` for this network fingerprint → use it (0 ms);
+2. otherwise run L1/L2/L3 inline over the candidates (bounded: 48 targets, 24 → L2, 3 → L3);
+3. cache the verified entries for 30 minutes and dial them.
+
+``scanLevel=1`` keeps the old fast TCP probe for debugging; it is never used by the UI.
