@@ -43,6 +43,11 @@ android {
         // 16 KB page devices (PROMPT.md section 6.1): one ABI only.
         ndk {
             abiFilters += listOf("arm64-v8a")
+            // Test-only escape hatch: the Google 16 KB page-size emulator is
+            // x86_64 and its arm64 translation aborts on some Go code (SIGILL in
+            // libndk_translation), so A12 is checked with a natively built core:
+            //   ./gradlew :app:assembleDebug -PemulatorAbi=x86_64
+            providers.gradleProperty("emulatorAbi").orNull?.let { abiFilters += it }
         }
     }
 
@@ -96,9 +101,14 @@ dependencies {
     // The Go core, bound with gomobile (scripts/build-core-aar.sh). It is a
     // build artifact, not source: a fresh checkout has no AAR until the script
     // runs, so the dependency is conditional and the app still assembles.
-    val coreAar = file("libs/core.aar")
+    // arm64 for devices (core.aar), or the matching ABI for an emulator run
+    // (core-x86_64.aar, produced by scripts/build-core-aar.sh with -target=android/amd64).
+    val emulatorAbi = providers.gradleProperty("emulatorAbi").orNull
+    val coreAar = if (emulatorAbi == null) file("libs/core.aar") else file("libs/core-$emulatorAbi.aar")
     if (coreAar.exists()) {
         implementation(files(coreAar))
+    } else if (emulatorAbi != null) {
+        throw GradleException("missing $coreAar; build it with: gomobile bind -target=android/$emulatorAbi ...")
     }
 
     // Instrumentation smoke test: proves the gomobile bridge actually loads and

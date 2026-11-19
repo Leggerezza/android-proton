@@ -194,6 +194,8 @@ func cmdSelftest(args []string) error {
 	fmt.Printf("connected after %s\n", time.Since(started).Round(time.Millisecond))
 	fmt.Println("status:", protonnode.Status())
 
+	saveSessionBack(c.state)
+
 	body, err := socksGet(fmt.Sprintf("127.0.0.1:%d", c.socks), *url, 25*time.Second)
 	if err != nil {
 		fmt.Println("--- logs ---")
@@ -248,6 +250,25 @@ func cmdRun(args []string) error {
 		time.Sleep(10 * time.Second)
 		fmt.Println("status:", protonnode.Status())
 	}
+}
+
+// saveSessionBack persists a rotated token pair. Proton refresh tokens are
+// single-use: if the new pair is not written back, the next run fails with
+// "401 Invalid access token" / "2001 Invalid input" even though the account is fine.
+func saveSessionBack(path string) {
+	if path == "" {
+		return
+	}
+	sess, err := protonnode.SessionJSON()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "warning: cannot export the session:", err)
+		return
+	}
+	if err := os.WriteFile(path, []byte(sess), 0o600); err != nil {
+		fmt.Fprintln(os.Stderr, "warning: cannot persist the rotated session:", err)
+		return
+	}
+	fmt.Println("session: rotated tokens written back to", path)
 }
 
 func cmdState(args []string) error {
@@ -444,6 +465,7 @@ func cmdUDPTest(args []string) error {
 		return err
 	}
 	defer control.Close()
+	saveSessionBack(c.state)
 	fmt.Println("udp relay:", relay.String())
 
 	conn, err := net.DialUDP("udp", nil, relay)
