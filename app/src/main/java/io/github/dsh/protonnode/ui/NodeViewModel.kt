@@ -12,6 +12,7 @@ import io.github.dsh.protonnode.core.decideLogin
 import io.github.dsh.protonnode.core.looksRateLimited
 import io.github.dsh.protonnode.data.Prefs
 import io.github.dsh.protonnode.data.SessionStore
+import io.github.dsh.protonnode.data.buildStartConfig
 import io.github.dsh.protonnode.service.ProtonService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -59,6 +60,9 @@ class NodeViewModel(
 
     private val _mode = MutableStateFlow(prefs.mode)
     val mode: StateFlow<String> = _mode.asStateFlow()
+
+    private val _gameLock = MutableStateFlow(prefs.gameLock)
+    val gameLock: StateFlow<Boolean> = _gameLock.asStateFlow()
 
     private val _autostart = MutableStateFlow(prefs.autoStart)
     val autostart: StateFlow<Boolean> = _autostart.asStateFlow()
@@ -119,7 +123,7 @@ class NodeViewModel(
         }
     }
 
-    private fun configJson(): String = "{\"mode\":\"" + prefs.mode + "\",\"socksPort\":1080}"
+    private fun configJson(): String = buildStartConfig(prefs.mode, prefs.gameLock)
 
     fun setThemeMode(value: String) {
         prefs.themeMode = value
@@ -134,6 +138,11 @@ class NodeViewModel(
     fun setMode(value: String) {
         prefs.mode = value
         _mode.value = value
+    }
+
+    fun setGameLock(value: Boolean) {
+        prefs.gameLock = value
+        _gameLock.value = value
     }
 
     fun setAutostart(value: Boolean) {

@@ -104,4 +104,6 @@
     <string name="settings_login_missing">请填写邮箱和密码</string>
     <string name="settings_verify_ok">会话有效（%1$s）</string>
     <string name="home_session_expired">Proton 会话已失效，请到「设置 → 账户」重新登录。</string>
+    <string name="settings_game_lock">游戏期间锁定服务器</string>
+    <string name="settings_game_lock_hint">保持同一出口 IP；切换服务器会断开当前所有会话。</string>
 </resources>

@@ -98,6 +98,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/), generated with git-clif
   and `LoginGate` backs off 30s (120s when rate limited, exponential up to 10 min) so repeated
   taps cannot trigger Proton's "Too many requests".
 
+- **P6 groundwork**: a "Lock server during game" switch (default on) that is passed to the core
+  as `lockServer`, and the account status now prints the verification time in local time.
+
 ### Changed
 
 - CI: JDK 25 + Go 1.27.4, ktlint/Android Lint gate, release-APK path fixed for

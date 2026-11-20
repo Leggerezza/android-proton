@@ -1542,9 +1542,16 @@ adb shell wm size reset
 - `SessionInfoTest`（4 项）：valid/expired/unknown/garbage 的解析与 `isUsable` 判定；
 - Go `TestAuthVerdictIsReportedInSessionState` / `TestIsAuthError`：401 与 2001 都判为 auth 失败，state 里可见。
 
-> 运行时：构建已装到平板，但验证时平板已锁屏（且在电池供电，`stay_on` 不生效），
-> 截图与"唯一未验证"的部分（unknown → Verify → valid 的界面切换）留待解锁后补；
-> 上面四组测试覆盖了同一条判定链路。
+运行时（2026-11-20 12:45，解锁后）：
+
+![account](evidence/p5-account-1-unknown.png)
+
+- 状态行：`Signed in as ch***@outlook.com · verified 2026-11-20 12:47`（valid 时是主色）；
+- 邮箱/密码/2FA 输入框在已登录时**禁用**，按钮显示 **"Already signed in" 且不可点** —— 不会再发请求；
+- 未验证时这里显示 `not verified yet` + 「验证会话」按钮；过期时显示红色「会话已过期」，并在首页也给出提示。
+
+同一轮还加了 **游戏期间锁定服务器** 开关（默认开，PROMPT §7），截图见 `docs/evidence/p5-game-lock.png`；
+`buildStartConfig()` 把 `lockServer` 传给 Go 核心，已由 `StartConfigTest` 覆盖（游戏锁定 / 普通不锁 / 可关闭）。
 
 ### P5-E13 设备状态
 

@@ -76,3 +76,21 @@ object ConfigCodec {
             .digest(body.toByteArray())
             .joinToString("") { "%02x".format(it) }
 }
+
+/**
+ * Start configuration sent to the Go core. Game mode locks the server across
+ * reconnects by default (PROMPT.md 7: changing it mid-game changes the exit IP
+ * and drops every session).
+ */
+fun buildStartConfig(
+    mode: String,
+    gameLock: Boolean,
+    socksPort: Int = 1080,
+): String {
+    val effectiveMode = if (mode == "normal") "normal" else "game"
+    return JSONObject()
+        .put("mode", effectiveMode)
+        .put("socksPort", socksPort)
+        .put("lockServer", effectiveMode == "game" && gameLock)
+        .toString()
+}

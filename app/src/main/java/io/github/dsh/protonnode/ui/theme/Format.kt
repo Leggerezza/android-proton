@@ -1,5 +1,8 @@
 package io.github.dsh.protonnode.ui.theme
 
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /** Human-readable byte count for the UI (binary units, one decimal). */
@@ -26,4 +29,15 @@ fun formatUptime(seconds: Long): String {
         m > 0 -> String.format(Locale.US, "%dm %02ds", m, s)
         else -> String.format(Locale.US, "%ds", s)
     }
+}
+
+/** RFC3339 from the core -> local "yyyy-MM-dd HH:mm"; falls back to the raw value. */
+fun formatTimestamp(iso: String): String {
+    if (iso.isEmpty()) return "—"
+    return runCatching {
+        DateTimeFormatter
+            .ofPattern("yyyy-MM-dd HH:mm")
+            .withZone(ZoneId.systemDefault())
+            .format(Instant.parse(iso))
+    }.getOrDefault(iso)
 }

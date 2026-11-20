@@ -48,6 +48,7 @@ import io.github.dsh.protonnode.data.NodeProfile
 import io.github.dsh.protonnode.ui.LoginMessageKind
 import io.github.dsh.protonnode.ui.LoginUi
 import io.github.dsh.protonnode.ui.NodeViewModel
+import io.github.dsh.protonnode.ui.theme.formatTimestamp
 
 @Composable
 fun SettingsScreen(vm: NodeViewModel) {
@@ -56,6 +57,7 @@ fun SettingsScreen(vm: NodeViewModel) {
     val dynamic by vm.dynamicColor.collectAsStateWithLifecycle()
     val mode by vm.mode.collectAsStateWithLifecycle()
     val autostart by vm.autostart.collectAsStateWithLifecycle()
+    val gameLock by vm.gameLock.collectAsStateWithLifecycle()
     val apiDns by vm.apiDns.collectAsStateWithLifecycle()
     val sessionInfo by vm.session.collectAsStateWithLifecycle()
     val loginUi by vm.loginUi.collectAsStateWithLifecycle()
@@ -143,6 +145,17 @@ fun SettingsScreen(vm: NodeViewModel) {
                 FilterChip(selected = mode == "game", onClick = {
                     vm.setMode("game")
                 }, label = { Text(stringResource(R.string.servers_mode_game)) })
+            }
+            if (mode == "game") {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.settings_game_lock), Modifier.weight(1f))
+                    Switch(checked = gameLock, onCheckedChange = { vm.setGameLock(it) })
+                }
+                Text(
+                    stringResource(R.string.settings_game_lock_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.settings_autostart), Modifier.weight(1f))
@@ -361,7 +374,7 @@ private fun SessionStatusLine(
             !info.loggedIn -> stringResource(R.string.settings_signed_out) to MaterialTheme.colorScheme.onSurfaceVariant
             info.isExpired -> stringResource(R.string.settings_session_expired) to MaterialTheme.colorScheme.error
             info.isVerified && info.lastVerifiedAt.isNotEmpty() ->
-                stringResource(R.string.settings_session_verified, info.email, info.lastVerifiedAt) to
+                stringResource(R.string.settings_session_verified, info.email, formatTimestamp(info.lastVerifiedAt)) to
                     MaterialTheme.colorScheme.primary
             else ->
                 stringResource(R.string.settings_session_unverified, info.email) to

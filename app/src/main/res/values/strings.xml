@@ -104,4 +104,6 @@
     <string name="settings_login_missing">Email and password are required</string>
     <string name="settings_verify_ok">Session is valid (%1$s)</string>
     <string name="home_session_expired">Your Proton session is no longer valid. Sign in again in Settings → Account.</string>
+    <string name="settings_game_lock">Lock server during game</string>
+    <string name="settings_game_lock_hint">Keeps the same exit IP while playing; switching servers drops every session.</string>
 </resources>

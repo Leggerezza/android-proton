@@ -36,6 +36,11 @@ class Prefs(
         get() = prefs.getString(KEY_MODE, "game") ?: "game"
         set(value) = prefs.edit().putString(KEY_MODE, value).apply()
 
+    /** Lock the server while in game mode (PROMPT.md 7, default on). */
+    var gameLock: Boolean
+        get() = prefs.getBoolean(KEY_GAME_LOCK, true)
+        set(value) = prefs.edit().putBoolean(KEY_GAME_LOCK, value).apply()
+
     var themeMode: String
         get() = prefs.getString(KEY_THEME, "system") ?: "system"
         set(value) = prefs.edit().putString(KEY_THEME, value).apply()
@@ -59,6 +64,7 @@ class Prefs(
         private const val KEY_WANT_RUNNING = "want_running"
         private const val KEY_THEME = "theme_mode"
         private const val KEY_MODE = "tunnel_mode"
+        private const val KEY_GAME_LOCK = "game_lock"
         private const val KEY_DYNAMIC = "dynamic_color"
     }
 }
