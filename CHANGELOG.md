@@ -101,6 +101,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/), generated with git-clif
 - **P6 groundwork**: a "Lock server during game" switch (default on) that is passed to the core
   as `lockServer`, and the account status now prints the verification time in local time.
 
+### Added (P6)
+
+- **P6**: `FlClashConfig` generates the mihomo profile (socks5 127.0.0.1:1080 udp:true, GAME/PROXY
+  groups, fake-ip DNS, TUN) and validates it (loop guard first, MATCH order, udp).
+- **P6**: Settings can copy the profile and check the one currently in the clipboard.
+- **P6**: verified end to end on the tablet with FlClash 0.9.4: this app's own traffic is
+  DIRECT in FlClash while other apps go through `proton-node`.
+
 ### Changed
 
 - CI: JDK 25 + Go 1.27.4, ktlint/Android Lint gate, release-APK path fixed for

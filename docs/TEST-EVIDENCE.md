@@ -1558,9 +1558,53 @@ adb shell wm size reset
 验收结束后：断开连接（节点回到 `Stopped`）、`screen_off_timeout` 还原为 30000 ms、
 `stay_on_while_plugged_in` 还原为 15。
 
-## P6 — FlClash 集成
+## P6 — FlClash 集成与游戏模式（2026-11-20）
 
-`NOT RUN`
+### P6 状态：**集成链路打通，8 项验收里能做的都验了；GameNative 相关的留待安装后**
+
+平板：OPD2514，FlClash **dev 0.9.4 (arm64)**，profile 由本应用生成（`FlClashConfig`），
+通过 `clash://install-config?url=…` 导入，TUN 模式 + 规则模式。
+
+**关键证据**（FlClash → Requests 实时面板）：
+
+![flclash requests](evidence/p6-flclash-requests.png)
+
+| 进程 | 目标 | 命中的规则 | 出口 |
+|---|---|---|---|
+| `io.github.dsh.protonnode.debug` | 156.146.45.139:443（我们的隧道） | `ProcessName io.github…` | **DIRECT** ✅ |
+| `io.github.dsh.protonnode.debug` | api.protonmail.ch:443（API） | `ProcessName io.github…` | **DIRECT** ✅ |
+| ChatGPT / Google / 微信 / Chrome | 各自目标 | `Match` | `proton-node`（= 我们的 SOCKS5） ✅ |
+
+这张图同时证明了三件事：
+
+1. **防环路生效**：本应用的出站在 FlClash 里被判为 DIRECT，没有回到自己的 SOCKS；
+2. **别的应用真的走了我们的节点**：ChatGPT/微信/Chrome 的流量都从 `proton-node` 出去；
+3. **TUN 下节点仍能建隧道**：`Connected · HK#27-TOR · 156.146.45.139`，下载 63 KB 已经在跑。
+
+### P6-E1 应用侧状态（TUN 开启时）
+
+![tun connected](evidence/p6-tun-connected.png)
+
+### P6-E2 与 PROMPT §7.1 的 8 条对照
+
+| # | 验收项 | 状态 |
+|---|---|---|
+| 1 | GameNative 的 TCP/UDP/DNS 被 FlClash 捕获 | ⏳ 未装 GameNative |
+| 2 | GameNative 可整体指定到 GAME 组 | ✅ 配置里 `PROCESS-NAME,app.gamenative,GAME` 就位（规则数 7），未实跑 |
+| 3 | **本应用不被 FlClash 代理** | ✅ 见上图 DIRECT |
+| 4 | UDP ASSOCIATE 多目标并发 ≥16 | ✅ 协议级测试（P2，socks5 包 10+ 用例） |
+| 5 | UDP 会话稳定映射（120s 空闲才回收） | ✅ 协议级测试 |
+| 6 | 游戏中不因普通健康检查失败换服 | ✅ `lockServer` + 3 轮锁服（`StartConfigTest`） |
+| 7 | Steam 登录 / 下载 / UDP 联机 | ⏳ 未装 GameNative |
+| 8 | P2P/NAT 限制必须明确报告 | ⏳ 未实现（README 已有 Stealth/NAT 限制说明） |
+
+### P6-E3 说明
+
+- 配置由应用「设置 → FlClash / mihomo 配置 → 复制配置」生成，校验函数会检查
+  环路规则、`MATCH` 顺序、socks5 端口与 `udp: true`（单测 `FlClashConfigTest` 6 项）。
+- 导入走 `clash://install-config?url=…`；二维码/文件选择器这两条路在平板上都不顺手
+  （文件选择器会被系统"打开方式"截走），深链接最稳。
+- 设备上 FlClash 与节点目前都保持运行；停止方法：FlClash 面板点 Stop，应用点 Disconnect。
 
 ## P7 — 发布（16 KB / SHA256 / SBOM）
 
