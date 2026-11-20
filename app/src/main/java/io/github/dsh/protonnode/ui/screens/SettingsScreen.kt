@@ -62,6 +62,10 @@ fun SettingsScreen(vm: NodeViewModel) {
     val sessionInfo by vm.session.collectAsStateWithLifecycle()
     val loginUi by vm.loginUi.collectAsStateWithLifecycle()
     var loginCooldownSeconds by remember { mutableStateOf(0L) }
+    val preferredCountry by vm.preferredCountry.collectAsStateWithLifecycle()
+    var countryText by remember(preferredCountry) { mutableStateOf(preferredCountry) }
+    var countryError by remember { mutableStateOf(false) }
+    var savedCountry by remember { mutableStateOf("") }
 
     var dnsText by remember(apiDns) { mutableStateOf(apiDns) }
     var loginEmail by remember { mutableStateOf("") }
@@ -148,6 +152,43 @@ fun SettingsScreen(vm: NodeViewModel) {
                 FilterChip(selected = mode == "game", onClick = {
                     vm.setMode("game")
                 }, label = { Text(stringResource(R.string.servers_mode_game)) })
+            }
+            OutlinedTextField(
+                value = countryText,
+                onValueChange = { countryText = it },
+                label = { Text(stringResource(R.string.settings_default_country)) },
+                supportingText = {
+                    Text(
+                        if (countryError) {
+                            stringResource(R.string.settings_default_country_invalid)
+                        } else {
+                            stringResource(R.string.settings_default_country_hint)
+                        },
+                    )
+                },
+                isError = countryError,
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                // The saved value is shown through a composed string, not getString().
+                Button(onClick = {
+                    val ok = vm.setCountryCode(countryText)
+                    countryError = !ok
+                    savedCountry = if (ok) countryText.trim().uppercase() else ""
+                }) { Text(stringResource(R.string.dialog_ok)) }
+                OutlinedButton(onClick = {
+                    countryText = ""
+                    countryError = false
+                    vm.setCountryCode("")
+                }) { Text(stringResource(R.string.servers_auto)) }
+            }
+            if (savedCountry.isNotEmpty()) {
+                Text(
+                    stringResource(R.string.settings_default_country_saved, savedCountry),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
             }
             if (mode == "game") {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

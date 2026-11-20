@@ -1676,6 +1676,21 @@ FlClash 面板显示：
 
 结论：**P6 的集成链路在真机上闭环了** —— TUN 捕获 → mihomo 规则 → proton-node（我们的 SOCKS）→ Proton 出口 → 应用。
 音频播放没问题；视频/大图会因为吞吐（~30 KB/s 均速）偏慢，列入 P7 调优（MTU 1200/1500/9000 对比、`tcp-concurrent`、入口 RTT 择优选服）。
+### P6-E8 默认国家：用户自己输入两位代码（2026-11-20 16:0x）
+
+设置 → Behavior → **Default country**：
+
+- 输入任意两位字母（大小写都行，自动转大写），如 `jp` → `JP`；留空 = 自动；
+- 校验：必须是两位字母，否则字段标红并提示「请输入两位字母的国家代码，例如 JP、US、DE」；
+- 保存后写入 Prefs，并清掉单台服务器固定（两者互斥）；
+- Servers 页顶部会显示 `Selection: JP`，Auto 可一键清空。
+
+![country](evidence/p6-country-saved.png)
+
+![servers](evidence/p6-country-servers.png)
+
+验证：输入 `JPjp`（4 个字符）→ 报错；清空后输入 `jp` → 「Default country set to JP」，
+Servers 显示 `Selection: JP`。单测 `CountryCodeTest`（4 项）覆盖空值/大小写/非法/未知代码。
 ### P6-E2 与 PROMPT §7.1 的 8 条对照
 
 | # | 验收项 | 状态 |

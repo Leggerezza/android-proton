@@ -116,4 +116,8 @@
     <string name="servers_selection">选择</string>
     <string name="servers_auto">自动</string>
     <string name="home_pinned">已固定服务器：%1$s</string>
+    <string name="settings_default_country">默认国家</string>
+    <string name="settings_default_country_hint">两位国家代码，例如 JP、US；留空表示自动</string>
+    <string name="settings_default_country_invalid">请输入两位字母的国家代码，例如 JP、US、DE</string>
+    <string name="settings_default_country_saved">默认国家已设为 %1$s</string>
 </resources>

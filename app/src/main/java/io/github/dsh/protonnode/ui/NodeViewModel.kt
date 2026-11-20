@@ -180,6 +180,23 @@ class NodeViewModel(
         }
     }
 
+    /**
+     * Applies a typed two-letter country code. Returns false when the input is
+     * not two letters, so the settings screen can show the reason.
+     */
+    fun setCountryCode(raw: String): Boolean {
+        val code =
+            io.github.dsh.protonnode.data
+                .normalizeCountryCode(raw) ?: return false
+        prefs.preferredCountry = code
+        _preferredCountry.value = code
+        if (code.isNotEmpty()) {
+            prefs.preferredServer = ""
+            _preferredServer.value = ""
+        }
+        return true
+    }
+
     fun clearSelection() {
         prefs.preferredServer = ""
         prefs.preferredCountry = ""

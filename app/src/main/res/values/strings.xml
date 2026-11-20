@@ -116,4 +116,8 @@
     <string name="servers_selection">Selection</string>
     <string name="servers_auto">Auto</string>
     <string name="home_pinned">Pinned server: %1$s</string>
+    <string name="settings_default_country">Default country</string>
+    <string name="settings_default_country_hint">Two-letter code, e.g. JP or US; empty means automatic</string>
+    <string name="settings_default_country_invalid">Enter a two-letter code such as JP, US, DE</string>
+    <string name="settings_default_country_saved">Default country set to %1$s</string>
 </resources>

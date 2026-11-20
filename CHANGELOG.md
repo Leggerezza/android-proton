@@ -127,6 +127,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/), generated with git-clif
   Services) flows through `proton-node` while this app stays DIRECT. The earlier `rep 0x4` storm
   was a bad exit, not only MTU; throughput tuning is tracked for P7.
 
+- **P6**: `Default country` setting: the user types any two-letter code (case-insensitive,
+  validated, empty = automatic), which is stored and shown as the current selection; a pinned
+  server and a pinned country stay mutually exclusive.
+
 ### Changed
 
 - CI: JDK 25 + Go 1.27.4, ktlint/Android Lint gate, release-APK path fixed for
