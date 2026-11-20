@@ -113,4 +113,7 @@
     <string name="settings_flclash_copied">Profile copied. Paste it into FlClash as a new profile.</string>
     <string name="settings_flclash_ok">The profile is safe: this app is excluded and UDP is on.</string>
     <string name="settings_flclash_bad">The profile is missing something:</string>
+    <string name="servers_selection">Selection</string>
+    <string name="servers_auto">Auto</string>
+    <string name="home_pinned">Pinned server: %1$s</string>
 </resources>

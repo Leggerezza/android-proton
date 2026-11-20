@@ -1585,6 +1585,25 @@ adb shell wm size reset
 
 ![tun connected](evidence/p6-tun-connected.png)
 
+### P6-E5 手动选服务器 / 选国家（2026-11-20）
+
+之前只有自动选服（L3 扫描），用户没法自己指定。现在：
+
+- **Servers 页**：顶部显示 `Selection: Auto / JP#377 / JP`，有 `Auto` 清空按钮；
+- 点某一行 → 固定那台服务器（行高亮 + ✓）；点国家 chip（US/JP/HK/SG/KR/DE/NL/GB）→ 固定国家；
+- 选择写进 `Prefs`，并作为 `startConfig` 的 `server`/`country` 传给 Go 核心；
+- **固定服务器时跳过 L3 缓存**（用户点的是这台，不能被缓存里的别的服务器顶掉）；
+- **固定服务器 L3 失败不再回退 L1**：直接报错，避免对着一个 TLS 都不通的入口无限重试。
+
+实测：
+
+```
+Selection: US-CO#103 → Connect → Connected · US-CO#103 · 212.102.44.161   ✅
+Selection: JP#173   → Connect → Reconnecting…
+Last error: pinned server "JP#173" did not pass L3 verification:
+            scan: no entry completed a WireGuard handshake        ✅（明确报错，不空转）
+```
+
 ### P6-E2 与 PROMPT §7.1 的 8 条对照
 
 | # | 验收项 | 状态 |

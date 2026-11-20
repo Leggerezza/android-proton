@@ -36,6 +36,16 @@ class Prefs(
         get() = prefs.getString(KEY_MODE, "game") ?: "game"
         set(value) = prefs.edit().putString(KEY_MODE, value).apply()
 
+    /** Manual server pin ("" = automatic L3 selection). */
+    var preferredServer: String
+        get() = prefs.getString(KEY_PREF_SERVER, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_PREF_SERVER, value).apply()
+
+    /** Manual country pin ("" = automatic). */
+    var preferredCountry: String
+        get() = prefs.getString(KEY_PREF_COUNTRY, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_PREF_COUNTRY, value).apply()
+
     /** Lock the server while in game mode (PROMPT.md 7, default on). */
     var gameLock: Boolean
         get() = prefs.getBoolean(KEY_GAME_LOCK, true)
@@ -65,6 +75,8 @@ class Prefs(
         private const val KEY_THEME = "theme_mode"
         private const val KEY_MODE = "tunnel_mode"
         private const val KEY_GAME_LOCK = "game_lock"
+        private const val KEY_PREF_SERVER = "preferred_server"
+        private const val KEY_PREF_COUNTRY = "preferred_country"
         private const val KEY_DYNAMIC = "dynamic_color"
     }
 }

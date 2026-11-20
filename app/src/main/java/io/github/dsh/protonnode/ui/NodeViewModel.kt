@@ -61,6 +61,12 @@ class NodeViewModel(
     private val _mode = MutableStateFlow(prefs.mode)
     val mode: StateFlow<String> = _mode.asStateFlow()
 
+    private val _preferredServer = MutableStateFlow(prefs.preferredServer)
+    val preferredServer: StateFlow<String> = _preferredServer.asStateFlow()
+
+    private val _preferredCountry = MutableStateFlow(prefs.preferredCountry)
+    val preferredCountry: StateFlow<String> = _preferredCountry.asStateFlow()
+
     private val _gameLock = MutableStateFlow(prefs.gameLock)
     val gameLock: StateFlow<Boolean> = _gameLock.asStateFlow()
 
@@ -123,7 +129,13 @@ class NodeViewModel(
         }
     }
 
-    private fun configJson(): String = buildStartConfig(prefs.mode, prefs.gameLock)
+    private fun configJson(): String =
+        buildStartConfig(
+            mode = prefs.mode,
+            gameLock = prefs.gameLock,
+            server = prefs.preferredServer,
+            country = prefs.preferredCountry,
+        )
 
     fun setThemeMode(value: String) {
         prefs.themeMode = value
@@ -138,6 +150,41 @@ class NodeViewModel(
     fun setMode(value: String) {
         prefs.mode = value
         _mode.value = value
+    }
+
+    /** Pins one logical server ("" clears it and returns to automatic selection). */
+    fun selectServer(
+        name: String,
+        country: String,
+    ) {
+        val next = if (prefs.preferredServer == name) "" else name
+        prefs.preferredServer = next
+        _preferredServer.value = next
+        if (next.isNotEmpty()) {
+            prefs.preferredCountry = ""
+            _preferredCountry.value = ""
+        } else if (country.isNotEmpty()) {
+            // Deselecting falls back to the country, which is still a choice.
+            prefs.preferredCountry = country
+            _preferredCountry.value = country
+        }
+    }
+
+    fun selectCountry(country: String) {
+        val next = if (prefs.preferredCountry == country) "" else country
+        prefs.preferredCountry = next
+        _preferredCountry.value = next
+        if (next.isNotEmpty()) {
+            prefs.preferredServer = ""
+            _preferredServer.value = ""
+        }
+    }
+
+    fun clearSelection() {
+        prefs.preferredServer = ""
+        prefs.preferredCountry = ""
+        _preferredServer.value = ""
+        _preferredCountry.value = ""
     }
 
     fun setGameLock(value: Boolean) {

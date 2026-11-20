@@ -1,5 +1,7 @@
 package io.github.dsh.protonnode.ui.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,11 +11,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -61,6 +67,8 @@ fun ServersScreen(vm: NodeViewModel) {
     val serversJson by vm.servers.collectAsStateWithLifecycle()
     val sessionInfo by vm.session.collectAsStateWithLifecycle()
     val mode by vm.mode.collectAsStateWithLifecycle()
+    val pinnedServer by vm.preferredServer.collectAsStateWithLifecycle()
+    val pinnedCountry by vm.preferredCountry.collectAsStateWithLifecycle()
     var query by remember { mutableStateOf("") }
 
     // Load (or refresh) when the screen opens: the ViewModel's initial load may
@@ -92,6 +100,31 @@ fun ServersScreen(vm: NodeViewModel) {
     Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Column(Modifier.widthIn(max = 900.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(stringResource(R.string.servers_title), style = MaterialTheme.typography.headlineSmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.servers_selection) + ": " +
+                        when {
+                            pinnedServer.isNotEmpty() -> pinnedServer
+                            pinnedCountry.isNotEmpty() -> pinnedCountry
+                            else -> stringResource(R.string.servers_auto)
+                        },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.weight(1f),
+                )
+                if (pinnedServer.isNotEmpty() || pinnedCountry.isNotEmpty()) {
+                    TextButton(onClick = { vm.clearSelection() }) { Text(stringResource(R.string.servers_auto)) }
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("US", "JP", "HK", "SG", "KR", "DE", "NL", "GB").forEach { cc ->
+                    FilterChip(
+                        selected = pinnedCountry == cc && pinnedServer.isEmpty(),
+                        onClick = { vm.selectCountry(cc) },
+                        label = { Text(cc) },
+                    )
+                }
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 FilterChip(
                     selected = mode == "game",
@@ -126,8 +159,18 @@ fun ServersScreen(vm: NodeViewModel) {
                 Text(filtered.size.toString() + " / " + all.size, style = MaterialTheme.typography.labelMedium)
                 LazyColumn(Modifier.fillMaxWidth()) {
                     items(filtered, key = { it.name }) { row ->
+                        val selected = pinnedServer == row.name
                         Row(
-                            Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                            Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    if (selected) {
+                                        MaterialTheme.colorScheme.secondaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.surface
+                                    },
+                                ).clickable { vm.selectServer(row.name, row.country) }
+                                .padding(horizontal = 8.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(Modifier.weight(1f)) {
@@ -137,6 +180,13 @@ fun ServersScreen(vm: NodeViewModel) {
                                         (if (row.entryIP.isNotEmpty()) " · " + row.entryIP else ""),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            if (selected) {
+                                Icon(
+                                    Icons.Filled.Check,
+                                    contentDescription = null,
+                                    modifier = Modifier.padding(end = 8.dp),
                                 )
                             }
                             Text(row.load.toString() + "%", style = MaterialTheme.typography.bodySmall)

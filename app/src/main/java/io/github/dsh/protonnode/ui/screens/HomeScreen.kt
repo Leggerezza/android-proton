@@ -37,6 +37,7 @@ fun HomeScreen(
 ) {
     val status by vm.status.collectAsStateWithLifecycle()
     val sessionInfo by vm.session.collectAsStateWithLifecycle()
+    val pinnedServer by vm.preferredServer.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -89,6 +90,13 @@ fun HomeScreen(
         } else {
             DetailsCard(status, Modifier.fillMaxWidth())
             TrafficCard(status, Modifier.fillMaxWidth())
+        }
+        if (pinnedServer.isNotEmpty()) {
+            Text(
+                stringResource(R.string.home_pinned, pinnedServer),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
         }
         if (status.lastError.isNotEmpty()) {
             OutlinedCard(Modifier.fillMaxWidth()) {

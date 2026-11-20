@@ -113,6 +113,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/), generated with git-clif
   domain suffixes + `GEOSITE,cn`/`GEOIP,CN` before `MATCH`); proxying every app through Proton was
   slow and tripped WeChat's risk control. The validator rejects profiles without the CN rules.
 
+- **P6**: manual server/country selection (Servers screen pin + country chips + Auto). A pinned
+  server bypasses the L3 cache and fails loudly instead of falling back to a bare TCP probe.
+- **P6**: the generated profile now mirrors the Windows rules: fake-ip excludes the Proton API
+  domains, foreign domain-suffixes sit above GEOSITE,cn, GEOIP,CN uses no-resolve, and
+  `find-process-mode: strict` / `profile.store-selected` are set.
+
 ### Changed
 
 - CI: JDK 25 + Go 1.27.4, ktlint/Android Lint gate, release-APK path fixed for

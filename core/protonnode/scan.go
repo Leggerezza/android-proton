@@ -319,18 +319,29 @@ func effectiveStore(s jsonStore) scan.Store {
 // are fresh for this network, otherwise a scan runs inline. scanLevel < 3 keeps
 // the fast L1 TCP probe.
 func (e *engine) pickCandidates(ctx context.Context, servers []proton.LogicalServer, candidates []proton.LogicalServer, cfg startConfig, port int) ([]candidate, error) {
+	// A manual server/country choice must never be silently replaced by the
+	// cache: the user asked for that exact server, so verify it fresh.
+	pinned := cfg.Server != "" || cfg.Country != ""
 	if cfg.ScanLevel >= 3 {
-		if cached := e.cachedScanCandidates(cfg.MaxProbe); len(cached) > 0 {
-			if picks := candidatesFromResults(servers, cached); len(picks) > 0 {
-				e.logfOrNil("scan: %d L3-verified entries reused from the cache", len(picks))
-				return picks, nil
+		if !pinned {
+			if cached := e.cachedScanCandidates(cfg.MaxProbe); len(cached) > 0 {
+				if picks := candidatesFromResults(servers, cached); len(picks) > 0 {
+					e.logfOrNil("scan: %d L3-verified entries reused from the cache", len(picks))
+					return picks, nil
+				}
 			}
 		}
 		picks, err := e.inlineScan(ctx, candidates, cfg)
 		if err == nil && len(picks) > 0 {
 			return picks, nil
 		}
-		e.logfOrNil("scan: L3 verification found nothing usable (%v); falling back to L1", err)
+		// No L1 fallback at scan level 3: dialling an entry that failed TLS or
+		// the WireGuard handshake only produces an endless retry loop.
+		e.logfOrNil("scan: L3 verification found nothing usable (%v)", err)
+		if cfg.Server != "" {
+			return nil, fmt.Errorf("pinned server %q did not pass L3 verification: %w", cfg.Server, err)
+		}
+		return nil, fmt.Errorf("no entry passed L3 verification: %w", err)
 	}
 	return e.probeCandidates(ctx, candidates, port, cfg), nil
 }

@@ -113,4 +113,7 @@
     <string name="settings_flclash_copied">已复制。到 FlClash 里作为新配置粘贴导入。</string>
     <string name="settings_flclash_ok">配置安全：本应用被排除，UDP 已开启。</string>
     <string name="settings_flclash_bad">配置缺少必要项：</string>
+    <string name="servers_selection">选择</string>
+    <string name="servers_auto">自动</string>
+    <string name="home_pinned">已固定服务器：%1$s</string>
 </resources>

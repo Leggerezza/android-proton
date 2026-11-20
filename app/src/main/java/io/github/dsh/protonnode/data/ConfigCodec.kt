@@ -86,11 +86,20 @@ fun buildStartConfig(
     mode: String,
     gameLock: Boolean,
     socksPort: Int = 1080,
+    server: String = "",
+    country: String = "",
 ): String {
     val effectiveMode = if (mode == "normal") "normal" else "game"
-    return JSONObject()
-        .put("mode", effectiveMode)
-        .put("socksPort", socksPort)
-        .put("lockServer", effectiveMode == "game" && gameLock)
-        .toString()
+    val json =
+        JSONObject()
+            .put("mode", effectiveMode)
+            .put("socksPort", socksPort)
+            .put("lockServer", effectiveMode == "game" && gameLock)
+    // A pinned server wins over a country; the Go core still re-verifies it with L3.
+    if (server.isNotBlank()) {
+        json.put("server", server.trim())
+    } else if (country.isNotBlank()) {
+        json.put("country", country.trim().uppercase())
+    }
+    return json.toString()
 }

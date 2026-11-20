@@ -30,6 +30,27 @@ class StartConfigTest {
     }
 
     @Test
+    fun aPinnedServerWinsOverACountry() {
+        val cfg = JSONObject(buildStartConfig("game", true, 1080, server = "JP#377", country = "us"))
+        assertEquals("JP#377", cfg.getString("server"))
+        assertFalse(cfg.has("country"))
+    }
+
+    @Test
+    fun aCountryIsUppercased() {
+        val cfg = JSONObject(buildStartConfig("normal", false, 1080, country = "jp"))
+        assertEquals("JP", cfg.getString("country"))
+        assertFalse(cfg.has("server"))
+    }
+
+    @Test
+    fun autoAddsNeitherField() {
+        val cfg = JSONObject(buildStartConfig("game", true))
+        assertFalse(cfg.has("server"))
+        assertFalse(cfg.has("country"))
+    }
+
+    @Test
     fun unknownModeFallsBackToGame() {
         assertEquals("game", JSONObject(buildStartConfig("weird", gameLock = false)).getString("mode"))
     }

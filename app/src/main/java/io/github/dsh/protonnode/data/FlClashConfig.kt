@@ -28,14 +28,30 @@ allow-lan: false
 mode: rule
 log-level: info
 ipv6: false
+unified-delay: true
+tcp-concurrent: true
+# PROCESS-NAME rules need /proc scanning; "strict" is what makes them reliable.
+find-process-mode: strict
+profile:
+  store-selected: true
 
 dns:
   enable: true
   enhanced-mode: fake-ip
   fake-ip-range: 198.18.0.1/16
+  fake-ip-filter:
+    - '*.lan'
+    - '*.local'
+    # The node talks to the Proton API directly; a fake-ip (198.18.x) there
+    # would break that dial (same insight as the Windows profile).
+    - '+.proton.me'
+    - '+.protonmail.ch'
+    - '+.protonvpn.com'
   nameserver:
     - 223.5.5.5
     - 119.29.29.29
+  proxy-server-nameserver:
+    - 223.5.5.5
 
 tun:
   enable: true
@@ -67,6 +83,35 @@ rules:
   - PROCESS-NAME,$selfPackage,DIRECT
   # Game traffic goes through the node; the order keeps it above the CN rules.
   - PROCESS-NAME,$gamePackage,GAME
+  # Domains that polluted DNS often resolves to a mainland IP
+  # (safebrowsing.googleapis.com -> 120.253.x). Domain rules must sit above
+  # GEOSITE/GEOIP or those connections would be sent DIRECT and fail.
+  - DOMAIN-SUFFIX,googleapis.com,PROXY
+  - DOMAIN-SUFFIX,google.com,PROXY
+  - DOMAIN-SUFFIX,gstatic.com,PROXY
+  - DOMAIN-SUFFIX,googleusercontent.com,PROXY
+  - DOMAIN-SUFFIX,googlevideo.com,PROXY
+  - DOMAIN-SUFFIX,ggpht.com,PROXY
+  - DOMAIN-SUFFIX,ytimg.com,PROXY
+  - DOMAIN-SUFFIX,youtube.com,PROXY
+  - DOMAIN-SUFFIX,gmail.com,PROXY
+  - DOMAIN-SUFFIX,github.com,PROXY
+  - DOMAIN-SUFFIX,githubusercontent.com,PROXY
+  - DOMAIN-SUFFIX,openai.com,PROXY
+  - DOMAIN-SUFFIX,chatgpt.com,PROXY
+  - DOMAIN-SUFFIX,oaistatic.com,PROXY
+  - DOMAIN-SUFFIX,oaiusercontent.com,PROXY
+  - DOMAIN-SUFFIX,anthropic.com,PROXY
+  - DOMAIN-SUFFIX,claude.ai,PROXY
+  - DOMAIN-SUFFIX,x.com,PROXY
+  - DOMAIN-SUFFIX,twitter.com,PROXY
+  - DOMAIN-SUFFIX,telegram.org,PROXY
+  - DOMAIN-SUFFIX,t.me,PROXY
+  - DOMAIN-SUFFIX,wikipedia.org,PROXY
+  - DOMAIN-SUFFIX,discord.com,PROXY
+  - DOMAIN-SUFFIX,reddit.com,PROXY
+  - DOMAIN-SUFFIX,cloudflare-dns.com,PROXY
+  - DOMAIN-SUFFIX,dns.google,PROXY
   # Domestic traffic must stay domestic: WeChat/Alipay/Taobao over a foreign exit
   # is slow and trips their risk control (foreign login warnings).
   - DOMAIN-SUFFIX,weixin.qq.com,DIRECT
@@ -83,7 +128,8 @@ rules:
   - DOMAIN-SUFFIX,meituan.com,DIRECT
   - DOMAIN-SUFFIX,163.com,DIRECT
   - GEOSITE,cn,DIRECT
-  - GEOIP,CN,DIRECT
+  # Literal-IP only: with fake-ip a domain must be judged by GEOSITE above.
+  - GEOIP,CN,DIRECT,no-resolve
   - IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
   - IP-CIDR,172.16.0.0/12,DIRECT,no-resolve
   - IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
@@ -128,7 +174,13 @@ rules:
             problems += "no MATCH rule"
         }
         // Domestic apps must not be dragged through a foreign exit.
-        val cnRule = rules.indexOfFirst { it == "GEOSITE,cn,DIRECT" || it == "GEOIP,CN,DIRECT" }
+        if (!text.contains("+.protonmail.ch") || !text.contains("fake-ip-filter")) {
+            problems += "the Proton API domains must be excluded from fake-ip, or the API dial breaks"
+        }
+        if (text.contains("GEOIP,CN,DIRECT\n")) {
+            problems += "GEOIP,CN must use no-resolve (fake-ip sends domains to the wrong side)"
+        }
+        val cnRule = rules.indexOfFirst { it == "GEOSITE,cn,DIRECT" || it == "GEOIP,CN,DIRECT,no-resolve" }
         if (cnRule < 0) {
             problems += "no CN direct rule (GEOSITE,cn / GEOIP,CN): WeChat and other domestic apps would be proxied"
         } else {
