@@ -119,6 +119,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/), generated with git-clif
   domains, foreign domain-suffixes sit above GEOSITE,cn, GEOIP,CN uses no-resolve, and
   `find-process-mode: strict` / `profile.store-selected` are set.
 
+- **P6**: the profile's TUN MTU is 9000 instead of 1280. With TUN on, the node's handshake
+  succeeds but its data path returns `rep 0x4`; without TUN it connects fine, so the MTU
+  mismatch (tunnel 1320 vs TUN 1280) is the prime suspect. Verification is pending.
+
 ### Changed
 
 - CI: JDK 25 + Go 1.27.4, ktlint/Android Lint gate, release-APK path fixed for

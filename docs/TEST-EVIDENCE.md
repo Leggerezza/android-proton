@@ -1604,6 +1604,39 @@ Last error: pinned server "JP#173" did not pass L3 verification:
             scan: no entry completed a WireGuard handshake        ✅（明确报错，不空转）
 ```
 
+### P6-E6 新版配置在平板上生效（2026-11-20 15:05）
+
+在 FlClash 里对 profile 点 **Update**（规则数 7 → **48**）并重启 VPN 后：
+
+![wechat direct](evidence/p6-requests-cn.png)
+
+| 进程 | 目标 | 命中规则 | 出口 |
+|---|---|---|---|
+| com.tencent.mm | szlong.weixin.qq.com:80 | DomainSuffix weixin… | **DIRECT** |
+| com.tencent.mm | weixin.qq.com:443 | DomainSuffix weixin… | **DIRECT** |
+| com.tencent.mm | wximg.wxs.qq.com:443 | DomainSuffix qq.com | **DIRECT** |
+| com.tencent.mm | mmbiz.qpic.cn:443 | **GeoSite cn** | **DIRECT** |
+| com.tencent.mm | 43.168.102.50:443 | **GeoIP cn** | **DIRECT** |
+| io.github.dsh.protonnode.debug | api.protonmail.ch:443 | ProcessName io.github… | **DIRECT** |
+
+微信不再被绕到 Proton 出口；`GEOSITE,cn` 在 FlClash 里能正常加载（48 条规则没报解析错误），
+`GEOIP,CN,no-resolve` 也按预期只处理字面 IP。
+
+### P6-E7 已知问题：FlClash TUN 开启时，节点的数据面不可用（待修）
+
+现象：
+
+- TUN 开（`tun0` up）+ 节点 Connect → 握手成功（`tunnel up in 251ms`）、SOCKS 监听正常，
+  但 mihomo 转发进来的连接全部 `socks5: CONNECT failed (rep 0x4)`；
+- 关掉 FlClash VPN、同一节点 Connect → 立刻 `Connected · JP#294`，一切正常。
+
+排除法说明**节点本身没问题**，问题出在「我们的 TLS/TCP 隧道再被 mihomo 的 TUN 承载」这条路上。
+首要嫌疑是 MTU：我们隧道的 MTU 是 1320，而 profile 里 mihomo 的 TUN 是 1280 —— 小包（TLS 握手）
+过得去，大包被丢/分片，表现正是「握手成功、数据 dial 失败」。
+
+已做的调整：模板的 `tun.mtu` 改成 **9000**（mihomo 常用默认），待下一轮验证；
+若不解决，下一步对比「节点 MTU 降到 1200」与「TUN MTU 9000」两组，并抓 logcat / mihomo 日志定位。
+
 ### P6-E2 与 PROMPT §7.1 的 8 条对照
 
 | # | 验收项 | 状态 |
