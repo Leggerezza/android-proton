@@ -23,6 +23,9 @@ type serverRow struct {
 	Load         int     `json:"load"`
 	Score        float64 `json:"score"`
 	SecureCore   bool    `json:"secureCore"`
+	P2P          bool    `json:"p2p,omitempty"`
+	Tor          bool    `json:"tor,omitempty"`
+	Streaming    bool    `json:"streaming,omitempty"`
 	EntryIP      string  `json:"entryIP,omitempty"`
 	Tier         int     `json:"tier"`
 }
@@ -36,6 +39,9 @@ func serverRowOf(s *proton.LogicalServer) serverRow {
 		Load:         s.Load,
 		Score:        s.Score,
 		SecureCore:   s.IsSecureCore(),
+		P2P:          s.IsP2P(),
+		Tor:          s.IsTor(),
+		Streaming:    s.IsStreaming(),
 		Tier:         s.EffectiveTier(),
 	}
 	if ps := s.BestPhysical(); ps != nil {

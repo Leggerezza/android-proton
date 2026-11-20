@@ -1691,6 +1691,26 @@ FlClash 面板显示：
 
 验证：输入 `JPjp`（4 个字符）→ 报错；清空后输入 `jp` → 「Default country set to JP」，
 Servers 显示 `Selection: JP`。单测 `CountryCodeTest`（4 项）覆盖空值/大小写/非法/未知代码。
+### P6-E9 服务器特性标注（Secure Core / P2P / Tor / Streaming）（2026-11-20 16:4x）
+
+Go 侧 `serverRow` 现在把 Proton 的特性位（`FeatureSecureCore/Tor/P2P/Streaming`）
+透出成 `secureCore/p2p/tor/streaming` 四个布尔字段；Servers 页：
+
+- 每行后面显示徽标，例如 `CH · Tor`、`AD · P2P · Streaming · 135.136.16.2`；
+- 新增一排可横滑的过滤 chip：**P2P / Tor / Secure Core / Streaming**；
+- 游戏模式下**自动排除 Secure Core 和 Tor**（PROMPT §7：Tor 多两跳，延迟不可接受）。
+
+实测（2784 台逻辑服务器）：
+
+| 过滤 | 数量 | 样例 |
+|---|---|---|
+| P2P | **1971 / 2784** | AD · P2P · Streaming · 135.136.16.2 |
+| Tor | **7 / 2784** | CH · Tor、DE · Tor、FR · Tor、HK · Tor |
+| 游戏模式 + Tor | 0（被排除） | 空态提示 |
+
+![p2p](evidence/p6-features-p2p.png)
+
+![tor](evidence/p6-features-tor.png)
 ### P6-E2 与 PROMPT §7.1 的 8 条对照
 
 | # | 验收项 | 状态 |

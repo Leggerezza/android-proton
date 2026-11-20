@@ -2,6 +2,7 @@ package io.github.dsh.protonnode.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.FilterChip
@@ -41,6 +43,9 @@ data class ServerRow(
     val load: Int,
     val score: Double,
     val secureCore: Boolean,
+    val p2p: Boolean,
+    val tor: Boolean,
+    val streaming: Boolean,
     val entryIP: String,
 )
 
@@ -57,6 +62,9 @@ fun parseServers(json: String): List<ServerRow> =
                 load = o.optInt("load"),
                 score = o.optDouble("score", 0.0),
                 secureCore = o.optBoolean("secureCore", false),
+                p2p = o.optBoolean("p2p", false),
+                tor = o.optBoolean("tor", false),
+                streaming = o.optBoolean("streaming", false),
                 entryIP = o.optString("entryIP", ""),
             )
         }
@@ -75,6 +83,7 @@ fun ServersScreen(vm: NodeViewModel) {
     // have raced the session restore.
     LaunchedEffect(Unit) { vm.loadServers() }
     var gameOnly by remember(mode) { mutableStateOf(false) }
+    var featureFilter by remember { mutableStateOf("") }
 
     val all = remember(serversJson) { parseServers(serversJson) }
     val signedIn = sessionInfo.isUsable
@@ -86,9 +95,19 @@ fun ServersScreen(vm: NodeViewModel) {
                 val q = query.trim()
                 q.isEmpty() || row.name.contains(q, ignoreCase = true) || row.country.contains(q, ignoreCase = true)
             }
-            // PROMPT.md 7: game mode never offers Secure Core.
+            // PROMPT.md 7: game mode never offers Secure Core, and Tor exits are
+            // far too slow for it (two extra hops).
             .filter { row -> mode != "game" || !row.secureCore }
-            .filter { row -> !(mode == "game" && gameOnly) || row.country in GAME_ORDER }
+            .filter { row -> mode != "game" || !row.tor }
+            .filter { row ->
+                when (featureFilter) {
+                    "p2p" -> row.p2p
+                    "tor" -> row.tor
+                    "secure-core" -> row.secureCore
+                    "streaming" -> row.streaming
+                    else -> true
+                }
+            }.filter { row -> !(mode == "game" && gameOnly) || row.country in GAME_ORDER }
             .sortedWith(
                 if (mode == "game") {
                     compareBy({ GAME_ORDER.indexOf(it.country).let { i -> if (i < 0) 99 else i } }, { it.load })
@@ -144,6 +163,19 @@ fun ServersScreen(vm: NodeViewModel) {
                     )
                 }
             }
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                listOf("p2p" to "P2P", "tor" to "Tor", "secure-core" to "Secure Core", "streaming" to "Streaming")
+                    .forEach { (value, label) ->
+                        FilterChip(
+                            selected = featureFilter == value,
+                            onClick = { featureFilter = if (featureFilter == value) "" else value },
+                            label = { Text(label) },
+                        )
+                    }
+            }
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
@@ -175,8 +207,16 @@ fun ServersScreen(vm: NodeViewModel) {
                         ) {
                             Column(Modifier.weight(1f)) {
                                 Text(row.name, style = MaterialTheme.typography.titleSmall)
+                                val badges =
+                                    buildList {
+                                        if (row.secureCore) add("Secure Core")
+                                        if (row.tor) add("Tor")
+                                        if (row.p2p) add("P2P")
+                                        if (row.streaming) add("Streaming")
+                                    }
                                 Text(
-                                    row.country + (if (row.secureCore) " · Secure Core" else "") +
+                                    row.country +
+                                        (if (badges.isNotEmpty()) " · " + badges.joinToString(" · ") else "") +
                                         (if (row.entryIP.isNotEmpty()) " · " + row.entryIP else ""),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
