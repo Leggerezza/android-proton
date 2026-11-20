@@ -1664,6 +1664,18 @@ NouTube 首页已经能加载出歌单/歌曲（文字）；缩略图很慢（�
 - TUN MTU 保持 9000（当前可用）；
 - 自动选服在 L3/探活失败时应尽快换服（已实现）；固定服务器时明确报错（已实现）；
 - 吞吐偏低（~10 KB/s）列入 P7 调优：对比 MTU 1200/1400/9000、`tcp-concurrent`、以及入口 RTT。
+
+复测（15:22）：NouTube 点歌后 **正常播放**（暖暖 · 梁静茹，0:02/4:04，封面/歌单都加载出来），
+FlClash 面板显示：
+
+![dashboard](evidence/p6-dashboard.png)
+
+- 出口 IP **159.26.119.154**（Proton），VPN 已连、Rule 模式、48 条规则、2 个组（PROXY/GAME 都指向 proton-node）；
+- 实时速率 Down **29.5 KB/s**（峰值 329 KB/s）/ Up 16.8 KB/s，累计 ↓6.9 MB ↑6.3 MB；
+- FlClash 自己的连通性检查（iplocate.io / api.ipquery.io / ip-api.com / ident.me）也走 proton-node。
+
+结论：**P6 的集成链路在真机上闭环了** —— TUN 捕获 → mihomo 规则 → proton-node（我们的 SOCKS）→ Proton 出口 → 应用。
+音频播放没问题；视频/大图会因为吞吐（~30 KB/s 均速）偏慢，列入 P7 调优（MTU 1200/1500/9000 对比、`tcp-concurrent`、入口 RTT 择优选服）。
 ### P6-E2 与 PROMPT §7.1 的 8 条对照
 
 | # | 验收项 | 状态 |
