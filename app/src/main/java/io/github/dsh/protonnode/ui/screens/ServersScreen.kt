@@ -59,7 +59,7 @@ fun parseServers(json: String): List<ServerRow> =
 @Composable
 fun ServersScreen(vm: NodeViewModel) {
     val serversJson by vm.servers.collectAsStateWithLifecycle()
-    val session by vm.session.collectAsStateWithLifecycle()
+    val sessionInfo by vm.session.collectAsStateWithLifecycle()
     val mode by vm.mode.collectAsStateWithLifecycle()
     var query by remember { mutableStateOf("") }
 
@@ -69,7 +69,7 @@ fun ServersScreen(vm: NodeViewModel) {
     var gameOnly by remember(mode) { mutableStateOf(false) }
 
     val all = remember(serversJson) { parseServers(serversJson) }
-    val signedIn = session.contains("\"loggedIn\":true")
+    val signedIn = sessionInfo.isUsable
 
     val filtered =
         all

@@ -70,6 +70,7 @@ func (e *engine) servers(ctx context.Context) ([]proton.LogicalServer, error) {
 	}
 	list, err := c.Logicals(ctx)
 	if err == nil && len(list) > 0 {
+		e.markAuthValid()
 		if st != nil {
 			if werr := st.WriteJSON(serverCacheFile, &serverCache{At: time.Now(), List: list}); werr != nil {
 				e.logfOrNil("servers: cannot cache list: %v", werr)
@@ -80,6 +81,9 @@ func (e *engine) servers(ctx context.Context) ([]proton.LogicalServer, error) {
 	}
 	if err == nil {
 		err = errors.New("the API returned an empty server list")
+	}
+	if isAuthError(err) {
+		e.markAuthExpired(err)
 	}
 	if st != nil {
 		var cache serverCache

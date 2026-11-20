@@ -91,4 +91,17 @@
 <string name="settings_password">Password</string>
 <string name="settings_totp">2FA code (if enabled)</string>
 <string name="settings_sign_in">Sign in</string>
+    <string name="settings_session_expired">Session expired — sign in again</string>
+    <string name="settings_session_verified">Signed in as %1$s · verified %2$s</string>
+    <string name="settings_session_unverified">Signed in as %1$s · not verified yet</string>
+    <string name="settings_already_signed_in">Already signed in</string>
+    <string name="settings_already_signed_in_as">You are already signed in as %1$s. No request was sent.</string>
+    <string name="settings_signing_in">Signing in…</string>
+    <string name="settings_wait">Try again in %1$ds</string>
+    <string name="settings_verify_session">Verify session</string>
+    <string name="settings_login_success">Signed in as %1$s</string>
+    <string name="settings_login_failed">Sign in failed: %1$s</string>
+    <string name="settings_login_missing">Email and password are required</string>
+    <string name="settings_verify_ok">Session is valid (%1$s)</string>
+    <string name="home_session_expired">Your Proton session is no longer valid. Sign in again in Settings → Account.</string>
 </resources>

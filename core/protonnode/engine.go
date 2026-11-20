@@ -59,6 +59,12 @@ type engine struct {
 	scans              *scanState
 	networkFingerprint string
 	lastScanSummary    string
+
+	// Last authentication verdict: an App restart must not pretend a stored
+	// session still works (the UI shows "unverified" until we learn more).
+	authState string // "", "valid", "expired"
+	authAt    time.Time
+	authErr   string
 }
 
 var eng = &engine{
@@ -76,6 +82,53 @@ func (e *engine) stateSnapshot() string {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	return e.state
+}
+
+// markAuthValid records a successful authenticated call.
+func (e *engine) markAuthValid() {
+	e.mu.Lock()
+	e.authState = "valid"
+	e.authAt = time.Now()
+	e.authErr = ""
+	e.mu.Unlock()
+}
+
+// markAuthExpired records that Proton rejected the session (401/2001).
+func (e *engine) markAuthExpired(err error) {
+	msg := "session expired"
+	if err != nil {
+		msg = err.Error()
+	}
+	e.mu.Lock()
+	if e.authState != "expired" {
+		e.logfOrNil("auth: session rejected (%s)", msg)
+	}
+	e.authState = "expired"
+	e.authAt = time.Now()
+	e.authErr = msg
+	e.mu.Unlock()
+}
+
+// resetAuthVerdict forgets the verdict (new session, logout, re-init).
+func (e *engine) resetAuthVerdict() {
+	e.mu.Lock()
+	e.authState = ""
+	e.authAt = time.Time{}
+	e.authErr = ""
+	e.mu.Unlock()
+}
+
+// isAuthError reports whether err means "these tokens are not accepted".
+func isAuthError(err error) bool {
+	if err == nil {
+		return false
+	}
+	var apiErr *proton.APIError
+	if errors.As(err, &apiErr) && apiErr.IsAuth() {
+		return true
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "401") || strings.Contains(msg, "2001")
 }
 
 func (e *engine) markSessionDirty() {
@@ -188,6 +241,10 @@ func SetSession(jsonStr string) error {
 	defer eng.mu.Unlock()
 	eng.session = s
 	eng.sessionDirty = false
+	// A restored session is unverified until an authenticated call says so.
+	eng.authState = ""
+	eng.authAt = time.Time{}
+	eng.authErr = ""
 	if eng.client != nil {
 		eng.client.SetTokens(s.tokens())
 	}
@@ -271,6 +328,7 @@ func Login(user, pass, totp string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	eng.markAuthValid()
 	eng.logfOrNil("login: SRP ok (uid %s)", maskUID(res.UID))
 	if res.Needs2FA {
 		if totp == "" {
@@ -310,6 +368,9 @@ func Logout() error {
 	eng.session = sessionJSON{}
 	eng.sessionDirty = true
 	eng.plan, eng.tier = "", 0
+	eng.authState = ""
+	eng.authAt = time.Time{}
+	eng.authErr = ""
 	eng.mu.Unlock()
 	if err != nil {
 		// A network failure must not keep the user logged in locally.
@@ -334,13 +395,41 @@ func (e *engine) refreshAccount(timeout time.Duration) {
 	acc, err := c.Account(ctx)
 	if err != nil {
 		e.logfOrNil("account: %v", err)
+		if isAuthError(err) {
+			e.markAuthExpired(err)
+		}
 		return
 	}
+	e.markAuthValid()
 	e.mu.Lock()
 	e.plan = acc.VPN.PlanTitle
 	e.tier = acc.VPN.MaxTier
 	e.mu.Unlock()
 	e.logfOrNil("account: plan %q tier %d", acc.VPN.PlanTitle, acc.VPN.MaxTier)
+}
+
+// VerifySession checks the stored session with one authenticated call and
+// returns the resulting SessionState. The UI uses it only when the verdict is
+// unknown — never on every "Sign in" press.
+func VerifySession() (string, error) {
+	eng.mu.Lock()
+	c := eng.client
+	eng.mu.Unlock()
+	if c == nil {
+		return "", errNotInitialized
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	if _, err := c.Account(ctx); err != nil {
+		if isAuthError(err) {
+			eng.markAuthExpired(err)
+			return SessionState(), nil
+		}
+		return SessionState(), err
+	}
+	eng.markAuthValid()
+	eng.refreshAccount(10 * time.Second)
+	return SessionState(), nil
 }
 
 // ListServers returns the selectable servers as JSON. country is an ISO code

@@ -20,6 +20,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -27,6 +28,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,8 +42,11 @@ import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.dsh.protonnode.BuildConfig
 import io.github.dsh.protonnode.R
+import io.github.dsh.protonnode.core.SessionInfo
 import io.github.dsh.protonnode.data.ConfigCodec
 import io.github.dsh.protonnode.data.NodeProfile
+import io.github.dsh.protonnode.ui.LoginMessageKind
+import io.github.dsh.protonnode.ui.LoginUi
 import io.github.dsh.protonnode.ui.NodeViewModel
 
 @Composable
@@ -52,13 +57,14 @@ fun SettingsScreen(vm: NodeViewModel) {
     val mode by vm.mode.collectAsStateWithLifecycle()
     val autostart by vm.autostart.collectAsStateWithLifecycle()
     val apiDns by vm.apiDns.collectAsStateWithLifecycle()
-    val session by vm.session.collectAsStateWithLifecycle()
+    val sessionInfo by vm.session.collectAsStateWithLifecycle()
+    val loginUi by vm.loginUi.collectAsStateWithLifecycle()
+    var loginCooldownSeconds by remember { mutableStateOf(0L) }
 
     var dnsText by remember(apiDns) { mutableStateOf(apiDns) }
     var loginEmail by remember { mutableStateOf("") }
     var loginPassword by remember { mutableStateOf("") }
     var loginTotp by remember { mutableStateOf("") }
-    val loginMessage by vm.loginMessage.collectAsStateWithLifecycle()
     var showImport by remember { mutableStateOf(false) }
     var showSession by remember { mutableStateOf(false) }
     var sessionText by remember { mutableStateOf("") }
@@ -68,8 +74,16 @@ fun SettingsScreen(vm: NodeViewModel) {
     val okMessage = stringResource(R.string.dialog_ok)
     val savedMessage = stringResource(R.string.session_saved)
 
-    val email = NodeViewModel.jsonString(session, "email")
-    val signedIn = session.contains("\"loggedIn\":true")
+    // A countdown keeps the button honest while the gate cools down.
+    LaunchedEffect(loginUi.kind, loginUi.seconds) {
+        var left = loginUi.seconds
+        while (left > 0) {
+            loginCooldownSeconds = left
+            kotlinx.coroutines.delay(1000)
+            left -= 1
+        }
+        loginCooldownSeconds = 0
+    }
 
     Column(
         modifier =
@@ -149,54 +163,58 @@ fun SettingsScreen(vm: NodeViewModel) {
 
             HorizontalDivider()
             Section(stringResource(R.string.settings_account))
-            Text(
-                if (signedIn) {
-                    stringResource(
-                        R.string.settings_signed_in,
-                        email.ifEmpty {
-                            "?"
-                        },
-                    )
-                } else {
-                    stringResource(R.string.settings_signed_out)
-                },
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            if (signedIn) {
+            SessionStatusLine(sessionInfo, loginUi)
+            if (sessionInfo.loggedIn) {
                 OutlinedButton(onClick = { vm.logout() }) { Text(stringResource(R.string.settings_logout)) }
             }
-            run {
-                OutlinedTextField(
-                    value = loginEmail,
-                    onValueChange = { loginEmail = it },
-                    label = { Text(stringResource(R.string.settings_email)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = loginPassword,
-                    onValueChange = { loginPassword = it },
-                    label = { Text(stringResource(R.string.settings_password)) },
-                    singleLine = true,
-                    visualTransformation =
-                        androidx.compose.ui.text.input
-                            .PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = loginTotp,
-                    onValueChange = { loginTotp = it },
-                    label = { Text(stringResource(R.string.settings_totp)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Button(onClick = { vm.login(loginEmail, loginPassword, loginTotp) }) {
-                    Text(stringResource(R.string.settings_sign_in))
+            OutlinedTextField(
+                value = loginEmail,
+                onValueChange = { loginEmail = it },
+                label = { Text(stringResource(R.string.settings_email)) },
+                singleLine = true,
+                enabled = !loginUi.busy && !sessionInfo.isUsable,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                value = loginPassword,
+                onValueChange = { loginPassword = it },
+                label = { Text(stringResource(R.string.settings_password)) },
+                singleLine = true,
+                enabled = !loginUi.busy && !sessionInfo.isUsable,
+                visualTransformation =
+                    androidx.compose.ui.text.input
+                        .PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                value = loginTotp,
+                onValueChange = { loginTotp = it },
+                label = { Text(stringResource(R.string.settings_totp)) },
+                singleLine = true,
+                enabled = !loginUi.busy && !sessionInfo.isUsable,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Button(
+                    onClick = { vm.signIn(loginEmail, loginPassword, loginTotp) },
+                    enabled = !loginUi.busy && !sessionInfo.isUsable && loginCooldownSeconds == 0L,
+                ) {
+                    Text(
+                        when {
+                            sessionInfo.isUsable -> stringResource(R.string.settings_already_signed_in)
+                            loginUi.busy -> stringResource(R.string.settings_signing_in)
+                            loginCooldownSeconds > 0 -> stringResource(R.string.settings_wait, loginCooldownSeconds)
+                            else -> stringResource(R.string.settings_sign_in)
+                        },
+                    )
                 }
-                if (loginMessage.isNotEmpty()) {
-                    Text(loginMessage, style = MaterialTheme.typography.bodySmall)
+                if (sessionInfo.loggedIn && sessionInfo.authState == "unknown") {
+                    OutlinedButton(onClick = { vm.verifySession() }, enabled = !loginUi.busy) {
+                        Text(stringResource(R.string.settings_verify_session))
+                    }
                 }
             }
+            LoginFeedback(loginUi, loginCooldownSeconds)
             if (BuildConfig.DEBUG) {
                 OutlinedButton(
                     onClick = { showSession = true },
@@ -330,4 +348,78 @@ fun importConfig(
     vm.setAutostart(profile.autostart)
     vm.setApiDns(profile.apiDns)
     return true
+}
+
+/** One line that tells the user whether the stored session is actually usable. */
+@Composable
+private fun SessionStatusLine(
+    info: SessionInfo,
+    ui: LoginUi,
+) {
+    val (text, color) =
+        when {
+            !info.loggedIn -> stringResource(R.string.settings_signed_out) to MaterialTheme.colorScheme.onSurfaceVariant
+            info.isExpired -> stringResource(R.string.settings_session_expired) to MaterialTheme.colorScheme.error
+            info.isVerified && info.lastVerifiedAt.isNotEmpty() ->
+                stringResource(R.string.settings_session_verified, info.email, info.lastVerifiedAt) to
+                    MaterialTheme.colorScheme.primary
+            else ->
+                stringResource(R.string.settings_session_unverified, info.email) to
+                    MaterialTheme.colorScheme.onSurfaceVariant
+        }
+    Text(text, style = MaterialTheme.typography.bodyMedium, color = color)
+    if (info.isExpired && info.authError.isNotEmpty()) {
+        Text(info.authError, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+    }
+    if (ui.busy) {
+        LinearProgressIndicator(Modifier.fillMaxWidth())
+    }
+}
+
+/** Explicit feedback for every login outcome. */
+@Composable
+private fun LoginFeedback(
+    ui: LoginUi,
+    cooldownSeconds: Long,
+) {
+    when (ui.kind) {
+        LoginMessageKind.ALREADY_SIGNED_IN ->
+            Text(
+                stringResource(R.string.settings_already_signed_in_as, ui.detail),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        LoginMessageKind.MISSING_FIELDS ->
+            Text(
+                stringResource(R.string.settings_login_missing),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
+        LoginMessageKind.SUCCESS ->
+            Text(
+                stringResource(R.string.settings_login_success, ui.detail),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        LoginMessageKind.VERIFIED ->
+            Text(
+                stringResource(R.string.settings_verify_ok, ui.detail),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        LoginMessageKind.FAILED ->
+            Text(
+                stringResource(R.string.settings_login_failed, ui.detail) +
+                    if (cooldownSeconds > 0) " · " + stringResource(R.string.settings_wait, cooldownSeconds) else "",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
+        LoginMessageKind.COOLDOWN ->
+            Text(
+                stringResource(R.string.settings_wait, ui.seconds),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
+        LoginMessageKind.NONE -> Unit
+    }
 }

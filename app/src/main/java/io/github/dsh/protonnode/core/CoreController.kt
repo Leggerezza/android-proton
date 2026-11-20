@@ -116,6 +116,8 @@ object CoreController {
     @Volatile
     private var lastSavedSession: String? = null
 
+    suspend fun verifySession(): Result<String> = withContext(io) { runCatching { Protonnode.verifySession() } }
+
     suspend fun listServers(
         country: String,
         secureCore: Boolean,

@@ -36,7 +36,7 @@ fun HomeScreen(
     expanded: Boolean,
 ) {
     val status by vm.status.collectAsStateWithLifecycle()
-    val session by vm.session.collectAsStateWithLifecycle()
+    val sessionInfo by vm.session.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -45,7 +45,7 @@ fun HomeScreen(
         }
     }
 
-    val signedIn = session.contains("\"loggedIn\":true")
+    val signedIn = sessionInfo.isUsable
 
     Column(
         modifier =
@@ -71,7 +71,11 @@ fun HomeScreen(
         if (!signedIn) {
             OutlinedCard(Modifier.fillMaxWidth()) {
                 Text(
-                    stringResource(R.string.home_no_session),
+                    if (sessionInfo.isExpired) {
+                        stringResource(R.string.home_session_expired)
+                    } else {
+                        stringResource(R.string.home_no_session)
+                    },
                     Modifier.padding(16.dp),
                     style = MaterialTheme.typography.bodyMedium,
                 )

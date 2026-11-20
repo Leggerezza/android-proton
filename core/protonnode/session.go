@@ -120,6 +120,12 @@ type sessionState struct {
 	CertSerial    string `json:"certSerial,omitempty"`
 	CertExpiresAt string `json:"certExpiresAt,omitempty"`
 	SessionDirty  bool   `json:"sessionDirty"`
+	// AuthState is "unknown" until an authenticated call succeeds or fails,
+	// then "valid" or "expired". The UI must not claim a session works just
+	// because tokens are stored.
+	AuthState      string `json:"authState"`
+	LastVerifiedAt string `json:"lastVerifiedAt,omitempty"`
+	AuthError      string `json:"authError,omitempty"`
 }
 
 func maskUID(uid string) string {
@@ -127,6 +133,16 @@ func maskUID(uid string) string {
 		return uid
 	}
 	return uid[:8] + "…"
+}
+
+// authStateName reports the last known authentication verdict.
+func (e *engine) authStateName() string {
+	switch e.authState {
+	case "valid", "expired":
+		return e.authState
+	default:
+		return "unknown"
+	}
 }
 
 func (e *engine) sessionState() sessionState {
@@ -138,6 +154,11 @@ func (e *engine) sessionState() sessionState {
 		Plan:         e.plan,
 		Tier:         e.tier,
 		SessionDirty: e.sessionDirty,
+		AuthState:    e.authStateName(),
+		AuthError:    e.authErr,
+	}
+	if !e.authAt.IsZero() {
+		st.LastVerifiedAt = e.authAt.UTC().Format(time.RFC3339)
 	}
 	if c := e.session.Certificate; c != nil {
 		st.CertSerial = c.SerialNumber

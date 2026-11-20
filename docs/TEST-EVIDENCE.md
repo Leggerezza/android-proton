@@ -1521,7 +1521,32 @@ adb shell wm size reset
 2. **服务器列表一直空**：ViewModel 初始化时加载早于会话恢复，且进页面不重载。现在 `ServersScreen` 进入即 `loadServers()`。
 3. **游戏模式仍列出 Secure Core**：违反 PROMPT §7，已过滤。
 
-### P5-E12 设备状态
+### P5-E12 登录反馈与会话有效性（2026-11-20，用户反馈后重做）
+
+用户反馈三个问题：① 界面不告诉你本地会话是否还有效；② "Sign in" 不管有没有会话都往 Proton 发请求；
+③ 登录成功没有明显反馈，于是反复点，被 Proton 限流（"Too many requests"）。
+
+改法：
+
+| 问题 | 现在的行为 |
+|---|---|
+| 会话是否有效 | `SessionState()` 增加 `authState`（`unknown`/`valid`/`expired`）、`lastVerifiedAt`、`authError`。App 重启后是 **unknown**（"已登录 · 尚未验证"），API 拒绝后变 **expired**（"会话已过期——请重新登录" + 错误详情），成功后变 **valid**（"上次验证 …"） |
+| 重复登录请求 | `decideLogin()` 先看本地：`loggedIn && !expired` → 直接提示"已登录"，**不发送任何请求**；只有过期/无会话才真正调用 Proton |
+| 成功/失败反馈 | 按钮在请求中显示"正在登录…"并禁用；成功显示"登录成功：email"；失败显示原因；限流时按钮变"请 N 秒后再试" |
+| 被限流 | `LoginGate`：失败后 30s 冷却，Proton 说限流则 120s，连续失败指数退避（上限 10 分钟），成功清零 |
+
+新增测试：
+
+- `LoginGateTest`（6 项）：冷却、限流时长、退避上限、成功后清零、限流文案识别；
+- `LoginDecisionTest`（4 项）：**有效会话绝不发请求**、unknown 视为已登录、expired 允许重新登录、冷却/忙碌/空字段拦截；
+- `SessionInfoTest`（4 项）：valid/expired/unknown/garbage 的解析与 `isUsable` 判定；
+- Go `TestAuthVerdictIsReportedInSessionState` / `TestIsAuthError`：401 与 2001 都判为 auth 失败，state 里可见。
+
+> 运行时：构建已装到平板，但验证时平板已锁屏（且在电池供电，`stay_on` 不生效），
+> 截图与"唯一未验证"的部分（unknown → Verify → valid 的界面切换）留待解锁后补；
+> 上面四组测试覆盖了同一条判定链路。
+
+### P5-E13 设备状态
 
 验收结束后：断开连接（节点回到 `Stopped`）、`screen_off_timeout` 还原为 30000 ms、
 `stay_on_while_plugged_in` 还原为 15。

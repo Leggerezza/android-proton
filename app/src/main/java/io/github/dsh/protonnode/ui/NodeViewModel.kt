@@ -4,7 +4,12 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.dsh.protonnode.core.CoreController
+import io.github.dsh.protonnode.core.LoginDecision
+import io.github.dsh.protonnode.core.LoginGate
+import io.github.dsh.protonnode.core.SessionInfo
 import io.github.dsh.protonnode.core.StatusSnapshot
+import io.github.dsh.protonnode.core.decideLogin
+import io.github.dsh.protonnode.core.looksRateLimited
 import io.github.dsh.protonnode.data.Prefs
 import io.github.dsh.protonnode.data.SessionStore
 import io.github.dsh.protonnode.service.ProtonService
@@ -26,8 +31,13 @@ class NodeViewModel(
     private val _status = MutableStateFlow(CoreController.lastStatus)
     val status: StateFlow<StatusSnapshot> = _status.asStateFlow()
 
-    private val _session = MutableStateFlow("{}")
-    val session: StateFlow<String> = _session.asStateFlow()
+    private val _session = MutableStateFlow(SessionInfo.signedOut)
+    val session: StateFlow<SessionInfo> = _session.asStateFlow()
+
+    private val loginGate = LoginGate()
+
+    private val _loginUi = MutableStateFlow(LoginUi())
+    val loginUi: StateFlow<LoginUi> = _loginUi.asStateFlow()
 
     private val _logs = MutableStateFlow("")
     val logs: StateFlow<String> = _logs.asStateFlow()
@@ -77,7 +87,7 @@ class NodeViewModel(
     }
 
     private suspend fun refreshSession() {
-        _session.value = CoreController.sessionState()
+        _session.value = SessionInfo.from(CoreController.sessionState())
     }
 
     fun loadServers() {
@@ -147,25 +157,83 @@ class NodeViewModel(
         return result
     }
 
-    private val _loginMessage = MutableStateFlow("")
-    val loginMessage: StateFlow<String> = _loginMessage.asStateFlow()
-
-    fun login(
+    /**
+     * Sign in. A verified local session short-circuits the whole thing: no
+     * request is sent, the user is told they are already signed in. Failures
+     * start a cooldown so a frustrated double-tap cannot get the account
+     * rate limited by Proton.
+     */
+    fun signIn(
         email: String,
         password: String,
         totp: String,
     ) {
+        val now = System.currentTimeMillis()
+        when (
+            decideLogin(
+                info = _session.value,
+                busy = _loginUi.value.busy,
+                cooldownRemainingMs = loginGate.remainingMs(now),
+                email = email,
+                password = password,
+            )
+        ) {
+            LoginDecision.ALREADY_SIGNED_IN -> {
+                _loginUi.value = LoginUi(kind = LoginMessageKind.ALREADY_SIGNED_IN, detail = _session.value.email)
+                return
+            }
+            LoginDecision.COOLDOWN -> {
+                _loginUi.value =
+                    LoginUi(
+                        kind = LoginMessageKind.COOLDOWN,
+                        seconds = loginGate.remainingMs(now) / 1000,
+                    )
+                return
+            }
+            LoginDecision.MISSING_FIELDS -> {
+                _loginUi.value = LoginUi(kind = LoginMessageKind.MISSING_FIELDS)
+                return
+            }
+            LoginDecision.PROCEED -> Unit
+        }
         viewModelScope.launch {
-            _loginMessage.value = "…"
+            _loginUi.value = LoginUi(busy = true)
             val result = CoreController.login(email.trim(), password, totp.trim())
             if (result.isSuccess) {
-                // Persist immediately: the login just rotated the tokens.
                 CoreController.persistSession(sessionStore)
-                _loginMessage.value = "ok"
+                loginGate.onSuccess()
                 refreshSession()
+                _loginUi.value =
+                    LoginUi(
+                        kind = LoginMessageKind.SUCCESS,
+                        detail = _session.value.email.ifEmpty { email.trim() },
+                    )
             } else {
-                _loginMessage.value = result.exceptionOrNull()?.message ?: "login failed"
+                val reason = result.exceptionOrNull()?.message ?: "login failed"
+                val wait = loginGate.onFailure(System.currentTimeMillis(), looksRateLimited(reason))
+                _loginUi.value = LoginUi(kind = LoginMessageKind.FAILED, detail = reason)
+                _loginUi.value = _loginUi.value.copy(seconds = wait / 1000)
             }
+        }
+    }
+
+    /** Explicitly asks Proton whether the stored session still works. */
+    fun verifySession() {
+        if (_loginUi.value.busy) return
+        viewModelScope.launch {
+            _loginUi.value = LoginUi(busy = true)
+            val result = CoreController.verifySession()
+            refreshSession()
+            _loginUi.value =
+                if (result.isSuccess) {
+                    if (_session.value.isExpired) {
+                        LoginUi(kind = LoginMessageKind.FAILED, detail = _session.value.authError)
+                    } else {
+                        LoginUi(kind = LoginMessageKind.VERIFIED, detail = _session.value.email)
+                    }
+                } else {
+                    LoginUi(kind = LoginMessageKind.FAILED, detail = result.exceptionOrNull()?.message ?: "?")
+                }
         }
     }
 
@@ -247,3 +315,13 @@ class NodeViewModel(
         }
     }
 }
+
+enum class LoginMessageKind { NONE, ALREADY_SIGNED_IN, MISSING_FIELDS, SUCCESS, FAILED, COOLDOWN, VERIFIED }
+
+/** What the account section renders. */
+data class LoginUi(
+    val busy: Boolean = false,
+    val kind: LoginMessageKind = LoginMessageKind.NONE,
+    val detail: String = "",
+    val seconds: Long = 0,
+)

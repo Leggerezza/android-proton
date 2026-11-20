@@ -88,6 +88,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/), generated with git-clif
   restored; the Servers screen now loads on entry.
 - Game mode listed Secure Core servers (PROMPT.md 7 forbids it).
 
+### Fixed (P5, login UX)
+
+- The account section now reports the session verdict (`authState` unknown/valid/expired), so
+  a stored-but-dead session is visible instead of silently looking signed in.
+- Sign in never hits Proton when a usable session exists: `decideLogin` short-circuits to
+  "already signed in" and no request is sent.
+- Clear feedback and a cooldown: the button shows signing-in/success/failure/"try again in Ns",
+  and `LoginGate` backs off 30s (120s when rate limited, exponential up to 10 min) so repeated
+  taps cannot trigger Proton's "Too many requests".
+
 ### Changed
 
 - CI: JDK 25 + Go 1.27.4, ktlint/Android Lint gate, release-APK path fixed for
