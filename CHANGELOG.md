@@ -109,6 +109,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/), generated with git-clif
 - **P6**: verified end to end on the tablet with FlClash 0.9.4: this app's own traffic is
   DIRECT in FlClash while other apps go through `proton-node`.
 
+- **P6**: the generated FlClash profile now keeps domestic traffic domestic (WeChat/Alipay/Taobao
+  domain suffixes + `GEOSITE,cn`/`GEOIP,CN` before `MATCH`); proxying every app through Proton was
+  slow and tripped WeChat's risk control. The validator rejects profiles without the CN rules.
+
 ### Changed
 
 - CI: JDK 25 + Go 1.27.4, ktlint/Android Lint gate, release-APK path fixed for

@@ -38,6 +38,25 @@ class FlClashConfigTest {
     }
 
     @Test
+    fun domesticAppsGoDirect() {
+        val yaml = FlClashConfig.generate(self)
+        assertTrue(yaml.contains("DOMAIN-SUFFIX,weixin.qq.com,DIRECT"))
+        assertTrue(yaml.contains("GEOSITE,cn,DIRECT"))
+        assertTrue(yaml.contains("GEOIP,CN,DIRECT"))
+        val rules = yaml.substringAfter("rules:").lineSequence().map { it.trim() }.filter { it.startsWith("- ") }.toList()
+        assertTrue(rules.indexOf("- GEOIP,CN,DIRECT") < rules.indexOfFirst { it.startsWith("- MATCH,") })
+    }
+
+    @Test
+    fun aProfileThatProxiesWeChatIsRejected() {
+        val yaml = FlClashConfig.generate(self)
+            .lineSequence().filterNot { it.contains("GEOSITE,cn") || it.contains("GEOIP,CN") || it.contains("weixin.qq.com") }
+            .joinToString("\n")
+        val problems = FlClashConfig.validate(yaml, self)
+        assertTrue(problems.toString(), problems.any { it.contains("CN direct rule") })
+    }
+
+    @Test
     fun aConfigWithoutTheGuardIsRejected() {
         val yaml = FlClashConfig.generate(self).replace("- PROCESS-NAME,$self,DIRECT\n", "")
         val problems = FlClashConfig.validate(yaml, self)

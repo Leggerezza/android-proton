@@ -65,8 +65,25 @@ proxy-groups:
 rules:
   # Loop guard (PROMPT.md 5.6): this app must never be proxied.
   - PROCESS-NAME,$selfPackage,DIRECT
-  # Game traffic goes through the node; the order keeps it above MATCH.
+  # Game traffic goes through the node; the order keeps it above the CN rules.
   - PROCESS-NAME,$gamePackage,GAME
+  # Domestic traffic must stay domestic: WeChat/Alipay/Taobao over a foreign exit
+  # is slow and trips their risk control (foreign login warnings).
+  - DOMAIN-SUFFIX,weixin.qq.com,DIRECT
+  - DOMAIN-SUFFIX,wechat.com,DIRECT
+  - DOMAIN-SUFFIX,qq.com,DIRECT
+  - DOMAIN-SUFFIX,tencent.com,DIRECT
+  - DOMAIN-SUFFIX,alipay.com,DIRECT
+  - DOMAIN-SUFFIX,taobao.com,DIRECT
+  - DOMAIN-SUFFIX,tmall.com,DIRECT
+  - DOMAIN-SUFFIX,jd.com,DIRECT
+  - DOMAIN-SUFFIX,baidu.com,DIRECT
+  - DOMAIN-SUFFIX,bilibili.com,DIRECT
+  - DOMAIN-SUFFIX,douyin.com,DIRECT
+  - DOMAIN-SUFFIX,meituan.com,DIRECT
+  - DOMAIN-SUFFIX,163.com,DIRECT
+  - GEOSITE,cn,DIRECT
+  - GEOIP,CN,DIRECT
   - IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
   - IP-CIDR,172.16.0.0/12,DIRECT,no-resolve
   - IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
@@ -109,6 +126,14 @@ rules:
         }
         if (!rules.any { it.startsWith("MATCH,") }) {
             problems += "no MATCH rule"
+        }
+        // Domestic apps must not be dragged through a foreign exit.
+        val cnRule = rules.indexOfFirst { it == "GEOSITE,cn,DIRECT" || it == "GEOIP,CN,DIRECT" }
+        if (cnRule < 0) {
+            problems += "no CN direct rule (GEOSITE,cn / GEOIP,CN): WeChat and other domestic apps would be proxied"
+        } else {
+            val match = rules.indexOfFirst { it.startsWith("MATCH,") }
+            if (match in 0..<cnRule) problems += "the CN direct rule must come before MATCH"
         }
         if (rules.any { it.startsWith("MATCH,") } && rules.indexOfFirst { it.startsWith("MATCH,") } < selfIndex) {
             problems += "MATCH must come after the loop guard"
