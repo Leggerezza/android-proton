@@ -75,6 +75,9 @@ fun SettingsScreen(vm: NodeViewModel) {
     val invalidMessage = stringResource(R.string.import_invalid)
     val okMessage = stringResource(R.string.dialog_ok)
     val savedMessage = stringResource(R.string.session_saved)
+    val flclashCopiedMessage = stringResource(R.string.settings_flclash_copied)
+    val flclashOkMessage = stringResource(R.string.settings_flclash_ok)
+    val flclashBadMessage = stringResource(R.string.settings_flclash_bad)
 
     // A countdown keeps the button honest while the gate cools down.
     LaunchedEffect(loginUi.kind, loginUi.seconds) {
@@ -232,6 +235,46 @@ fun SettingsScreen(vm: NodeViewModel) {
                 OutlinedButton(
                     onClick = { showSession = true },
                 ) { Text(stringResource(R.string.settings_debug_session)) }
+            }
+
+            HorizontalDivider()
+            Section(stringResource(R.string.settings_flclash))
+            Text(
+                stringResource(R.string.settings_flclash_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(onClick = {
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    clipboard.setPrimaryClip(
+                        ClipData.newPlainText(
+                            "mihomo profile",
+                            io.github.dsh.protonnode.data.FlClashConfig
+                                .generate(context.packageName),
+                        ),
+                    )
+                    message = flclashCopiedMessage
+                }) { Text(stringResource(R.string.settings_flclash_copy)) }
+                OutlinedButton(onClick = {
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    val text =
+                        clipboard.primaryClip
+                            ?.getItemAt(0)
+                            ?.text
+                            ?.toString()
+                            .orEmpty()
+                    val problems =
+                        io.github.dsh.protonnode.data.FlClashConfig
+                            .validate(text, context.packageName)
+                    message =
+                        if (problems.isEmpty()) {
+                            flclashOkMessage
+                        } else {
+                            flclashBadMessage + " " +
+                                problems.joinToString("; ")
+                        }
+                }) { Text(stringResource(R.string.settings_flclash_check)) }
             }
 
             HorizontalDivider()

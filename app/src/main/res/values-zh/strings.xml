@@ -106,4 +106,11 @@
     <string name="home_session_expired">Proton 会话已失效，请到「设置 → 账户」重新登录。</string>
     <string name="settings_game_lock">游戏期间锁定服务器</string>
     <string name="settings_game_lock_hint">保持同一出口 IP；切换服务器会断开当前所有会话。</string>
+    <string name="settings_flclash">FlClash / mihomo 配置</string>
+    <string name="settings_flclash_hint">把配置复制进 FlClash（TUN 模式 + 规则模式）。配置里已经把本应用排除在代理之外，避免环路。</string>
+    <string name="settings_flclash_copy">复制配置</string>
+    <string name="settings_flclash_check">检查剪贴板配置</string>
+    <string name="settings_flclash_copied">已复制。到 FlClash 里作为新配置粘贴导入。</string>
+    <string name="settings_flclash_ok">配置安全：本应用被排除，UDP 已开启。</string>
+    <string name="settings_flclash_bad">配置缺少必要项：</string>
 </resources>
