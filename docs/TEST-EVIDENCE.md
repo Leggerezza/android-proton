@@ -1433,7 +1433,7 @@ stopped: {"state":"idle","rxBytes":0,"txBytes":0,"pid":26654,"udp":true,"mode":"
 | 日志屏 FLAG_SECURE | ✅ 截图整块变黑 | P5-E4 |
 | 配置导出/导入（版本 + SHA-256，无凭据） | ✅ 单元测试 3 项 | P5-E5 |
 | 空/错/加载态 | ✅ 未登录提示、扫描空态、错误卡片 | 截图 |
-| **连接态 / 服务器列表 / 扫描结果** | ⏳ 需要重新登录（旧 refresh token 已失效） | 待做 |
+| **连接态 / 服务器列表 / 扫描结果 / 日志** | ✅ 2026-11-20 12:08 在平板上跑通（登录后） | P5-E1/E4/E5 |
 
 ### P5-E1 expanded（横屏 1292dp）：侧栏 + 首页
 
@@ -1466,13 +1466,65 @@ adb shell wm size reset
 
 `ConfigCodecTest`：往返、篡改拒绝、版本不符拒绝 —— 3/3 通过；导出内容不含 token/password/key。
 
-### P5-E6 说明
+### P5-E6 连接态（2026-11-20 12:08）
 
-- 连接态没有截到图：这轮调试时把 P2 时期的 refresh token 用掉了（Proton 的 refresh token 一次性），
-  App 里旧会话因此报 `401 Invalid access token` / `2001 Invalid input`。已在 App 补上 **轮换后写回**（`CoreController.persistSession`，服务每 5s 同步一次），
-  并在设置页加了登录表单，重新登录后即可继续。
-- 设备上的 Live Caption（`com.google.android.as:captions`）会在截图里盖一层字幕浮层，验收截图时已尽量避开；
-  收尾时会把它恢复原状。
+登录后点 Connect，12s 内到 `connected`：
+
+![connected](evidence/p5-connected-home2.png)
+
+界面读到：`Connected · US-CO#103 · 212.102.44.161 · www.gstatic.com · SOCKS5 on 127.0.0.1:1080`，
+握手 **750 ms**、Traffic ↓14.5 KB，Mode game。点 Disconnect 后立即回到 `Stopped`。
+
+### P5-E7 服务器列表（2784 个逻辑服务器）
+
+![servers](evidence/p5-servers.png)
+
+游戏模式下按 JP → HK → KR → SG → US 排序，**不显示 Secure Core**（PROMPT §7），每行给国家、入口 IP、负载。
+
+### P5-E8 扫描（游戏顺序）
+
+![scan](evidence/p5-scan-results.png)
+
+`Stage l3 · 3 / 3 · 3 passed`：US-CO#103（835 ms）、HK#27-TOR（1095 ms）、HK#66（1103 ms）。
+这次是**缓存命中**（日志里 `scan: 3 L3-verified entries reused from the cache`），
+所以 UI 秒回；冷启动的完整 L1→L2→L3 见 P3-E2。
+
+### P5-E9 日志（FLAG_SECURE 生效时仍可读无障碍树）
+
+```
+04:14:24.755 core: initialized (dir /data/user/0/io.github.dsh.protonnode.debug/files/core)
+04:14:24.772 session: loaded for device protonnode-c88460e1 (uid sfg3i4qc…)
+04:14:27.431 servers: 2784 logical servers from the API
+04:14:29.678 start: mode game, socks 127.0.0.1:1080, mtu 1320, fingerprint chrome
+04:14:30.498 scan: 3 L3-verified entries reused from the cache
+04:14:30.503 certificate: reusing serial 18670022153 (expires 2026-11-27T04:06:47Z)
+04:14:30.503 server 1/3: US-CO#103 (US, Denver) entry 212.102.44.161 load 41% secure-core=false
+04:14:30.758 stealth: tcp connected to 212.102.44.161:443
+04:14:30.758 stealth: certificate verification is skipped for the Proton entry (rotating cert; PROMPT.md 0.4)
+04:14:31.026 stealth: TLS established with 212.102.44.161:443 (sni www.gstatic.com)
+04:14:31.878 tunnel up in 750ms (sni www.gstatic.com)
+04:14:31.878 SOCKS5 listening on 127.0.0.1:1080 (TCP CONNECT + UDP ASSOCIATE)
+```
+
+（`uid sfg3i4qc…` 是脱敏后的；日志面板是 `FLAG_SECURE`，截图为黑 —— 见 P5-E4。）
+
+### P5-E10 导出 / 导入
+
+设置 → Export：提示 `Configuration copied to the clipboard.`；→ Import：对话框
+`Importing replaces your preferences. Continue?` → Import → `OK`。
+文档结构由 `ConfigCodec` 生成（version + payload + SHA-256），篡改/版本不符会被拒绝（单测覆盖）。
+
+### P5-E11 本轮修掉的三个真 bug
+
+1. **日志永远是空的**：`Init()` 从没创建 ring log（只有 CLI 建过），`RecentLogs()` 直接返回空/抛异常。
+   现在 `Init` 里建 500 行 ring log，`RecentLogs` 也做了 nil 保护，并加了回归测试 `TestRecentLogsAfterInit`。
+2. **服务器列表一直空**：ViewModel 初始化时加载早于会话恢复，且进页面不重载。现在 `ServersScreen` 进入即 `loadServers()`。
+3. **游戏模式仍列出 Secure Core**：违反 PROMPT §7，已过滤。
+
+### P5-E12 设备状态
+
+验收结束后：断开连接（节点回到 `Stopped`）、`screen_off_timeout` 还原为 30000 ms、
+`stay_on_while_plugged_in` 还原为 15。
 
 ## P6 — FlClash 集成
 

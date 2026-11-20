@@ -101,6 +101,11 @@ func Init(cfgDir string) error {
 	if eng.store != nil {
 		return nil // idempotent
 	}
+	if eng.log == nil {
+		// The ring log must exist before anything logs: RecentLogs() reads it
+		// and the CLI used to be the only place that created it.
+		eng.log = newRingLog(500)
+	}
 	eng.store = st
 	eng.loadPrefsLocked()
 	c, err := proton.NewClient(proton.Options{
@@ -372,7 +377,13 @@ func ListServers(country string, secureCore bool) (string, error) {
 
 // RecentLogs returns the newest n redacted protocol lines, one per line.
 func RecentLogs(n int) string {
-	return strings.Join(eng.log.tail(n), "\n")
+	eng.mu.Lock()
+	log := eng.log
+	eng.mu.Unlock()
+	if log == nil {
+		return ""
+	}
+	return strings.Join(log.tail(n), "\n")
 }
 
 // ---------------------------------------------------------------------------

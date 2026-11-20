@@ -15,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,6 +62,10 @@ fun ServersScreen(vm: NodeViewModel) {
     val session by vm.session.collectAsStateWithLifecycle()
     val mode by vm.mode.collectAsStateWithLifecycle()
     var query by remember { mutableStateOf("") }
+
+    // Load (or refresh) when the screen opens: the ViewModel's initial load may
+    // have raced the session restore.
+    LaunchedEffect(Unit) { vm.loadServers() }
     var gameOnly by remember(mode) { mutableStateOf(false) }
 
     val all = remember(serversJson) { parseServers(serversJson) }
@@ -72,9 +77,11 @@ fun ServersScreen(vm: NodeViewModel) {
             .filter { row ->
                 val q = query.trim()
                 q.isEmpty() || row.name.contains(q, ignoreCase = true) || row.country.contains(q, ignoreCase = true)
-            }.filter { row ->
-                if (mode == "game" && gameOnly) row.country in GAME_ORDER && !row.secureCore else true
-            }.sortedWith(
+            }
+            // PROMPT.md 7: game mode never offers Secure Core.
+            .filter { row -> mode != "game" || !row.secureCore }
+            .filter { row -> !(mode == "game" && gameOnly) || row.country in GAME_ORDER }
+            .sortedWith(
                 if (mode == "game") {
                     compareBy({ GAME_ORDER.indexOf(it.country).let { i -> if (i < 0) 99 else i } }, { it.load })
                 } else {

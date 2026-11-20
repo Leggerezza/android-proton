@@ -80,6 +80,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/), generated with git-clif
   refreshed by the foreground service) — the P2 write-back bug no longer bites on device.
 - **P5**: the service ignores repeated network callbacks with the same fingerprint.
 
+### Fixed (P5)
+
+- The core never created its ring log, so `RecentLogs()` was empty in the app; `Init` now
+  creates it (500 lines) and `RecentLogs` is nil-safe, with a regression test.
+- The server list stayed empty because the ViewModel loaded it before the session was
+  restored; the Servers screen now loads on entry.
+- Game mode listed Secure Core servers (PROMPT.md 7 forbids it).
+
 ### Changed
 
 - CI: JDK 25 + Go 1.27.4, ktlint/Android Lint gate, release-APK path fixed for

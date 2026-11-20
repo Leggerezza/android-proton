@@ -9,8 +9,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -48,16 +49,20 @@ fun LogsScreen(vm: NodeViewModel) {
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        if (logs.isEmpty()) {
+        val lines = remember(logs) { logs.split("\n").filter { it.isNotBlank() } }
+        if (lines.isEmpty()) {
             Text(stringResource(R.string.logs_empty), style = MaterialTheme.typography.bodyMedium)
         } else {
-            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
-                Text(
-                    logs,
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 12.sp,
-                    style = MaterialTheme.typography.bodySmall,
-                )
+            LazyColumn(Modifier.fillMaxWidth()) {
+                items(lines) { line ->
+                    Text(
+                        line,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 12.sp,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(vertical = 1.dp),
+                    )
+                }
             }
         }
     }
