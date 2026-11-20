@@ -1637,6 +1637,33 @@ Last error: pinned server "JP#173" did not pass L3 verification:
 已做的调整：模板的 `tun.mtu` 改成 **9000**（mihomo 常用默认），待下一轮验证；
 若不解决，下一步对比「节点 MTU 降到 1200」与「TUN MTU 9000」两组，并抓 logcat / mihomo 日志定位。
 
+### P6-E7 复测：TUN 下节点恢复工作（2026-11-20 15:21）
+
+把 FlClash 的 profile 重新 Update + 用它的 `com.follow.clash.action.START/STOP` 快捷动作重启后，
+节点在 TUN 下 **Connected · JP#373**，并且真实应用流量走通了：
+
+![noutube](evidence/p6-noutube-2.png)
+
+![requests](evidence/p6-requests-noutube.png)
+
+| 进程 | 目标 | 出口 | 流量 |
+|---|---|---|---|
+| jp.nonbili.noutube | music.youtube.com:443 | **proton-node** | ↓169 KB / ↑699 KB |
+| com.google.android.gms | www.googleapis.com:443 | **proton-node** | ↓3.2 KB |
+| com.android.vending | connectivitycheck.gstatic.com | **proton-node** | ↓3.5 KB |
+| io.github.dsh.protonnode.debug | 212.102.51.121:443（隧道本体） | **DIRECT** | ↓447 KB / ↑938 KB |
+| io.github.dsh.protonnode.debug | api.protonmail.ch:443 | **DIRECT** | ↓1.1 MB |
+
+NouTube 首页已经能加载出歌单/歌曲（文字）；缩略图很慢（当时面板只有 7.8 KB/s），属于吞吐问题，
+不是「连不上」。之前 Gemini/NouTube 打不开，对应的是 `rep 0x4` 那段（当时的服务器出口不可用），
+换到 JP#373 后恢复正常。
+
+结论修正：**MTU 不是唯一原因**——同样 TUN MTU 9000，换一台出口正常的服务器就通了；之前
+连续 `rep 0x4` 更像「那个出口坏了 + 我们对着它死循环」。因此：
+
+- TUN MTU 保持 9000（当前可用）；
+- 自动选服在 L3/探活失败时应尽快换服（已实现）；固定服务器时明确报错（已实现）；
+- 吞吐偏低（~10 KB/s）列入 P7 调优：对比 MTU 1200/1400/9000、`tcp-concurrent`、以及入口 RTT。
 ### P6-E2 与 PROMPT §7.1 的 8 条对照
 
 | # | 验收项 | 状态 |

@@ -123,6 +123,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/), generated with git-clif
   succeeds but its data path returns `rep 0x4`; without TUN it connects fine, so the MTU
   mismatch (tunnel 1320 vs TUN 1280) is the prime suspect. Verification is pending.
 
+- **P6**: retested under FlClash TUN: the node connects and real app traffic (NouTube, Play
+  Services) flows through `proton-node` while this app stays DIRECT. The earlier `rep 0x4` storm
+  was a bad exit, not only MTU; throughput tuning is tracked for P7.
+
 ### Changed
 
 - CI: JDK 25 + Go 1.27.4, ktlint/Android Lint gate, release-APK path fixed for
