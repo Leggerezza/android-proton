@@ -4,7 +4,7 @@ Android 16 (API 36) client that turns a Proton Stealth tunnel (WireGuard over TL
 into a local SOCKS5 node (`127.0.0.1:1080`) for mihomo / FlClash.
 
 - Target: OnePlus Pad 4 (OPD2514), OxygenOS 16, arm64-v8a, 16 KB pages
-- Package: `io.github.dsh.protonnode` (debug builds install as `io.github.dsh.protonnode.debug`)
+- Package: `io.github.leggerezza.protonnode` (debug builds install as `io.github.leggerezza.protonnode.debug`)
 - Scope: SOCKS5 node only (no VpnService); routing is done by FlClash
 - Status: **P5 in progress** — Compose UI (navigation rail / bottom bar by window size, Home,
   Servers, Scan, Settings with per-app language and Material You, Logs behind FLAG_SECURE,
@@ -97,3 +97,29 @@ A pass prints `tunnel up in …ms` and an exit IP that is **not** your own.
   (no retransmission); clients must retry.
 
 License: GPL-3.0-or-later (derived from Proton's open-source protocol code).
+
+## License and provenance
+
+This project is licensed under **GPL-3.0-or-later** (see [LICENSE](LICENSE)) and is
+derived from ProtonVPN's open-source components:
+
+- [ProtonVPN/wireguard-go](https://github.com/ProtonVPN/wireguard-go) — the TunSafe
+  framing, the uTLS Chrome fingerprint and the SNI pool used by the Stealth transport;
+- [ProtonVPN/go-vpn-lib](https://github.com/ProtonVPN/go-vpn-lib) — the Ed25519 →
+  X25519 key derivation;
+- the `proton-sidecar` reference implementation in this workspace.
+
+[NOTICE](NOTICE) carries the full attribution. WireGuard is a registered trademark
+of Jason A. Donenfeld; this project uses the official
+`golang.zx2c4.com/wireguard` library, not a Proton-modified one.
+
+## Distribution (F-Droid)
+
+`metadata/io.github.leggerezza.protonnode/` holds a draft F-Droid recipe
+(`metadata.yml` + `build.sh` + `LICENSE`). It declares the **NonFreeNet** anti-feature
+because the app talks to Proton's proprietary service.
+
+The recipe builds the Go core with `gomobile bind` and then `assembleRelease`.
+**Open item before submitting**: `go.mod` requires Go ≥ 1.26 while the stock F-Droid
+build image ships an older toolchain, so the submission needs a newer image (or a
+module downgrade) — see the note at the top of `metadata.yml`.

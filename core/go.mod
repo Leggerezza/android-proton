@@ -1,4 +1,4 @@
-module github.com/dsh/android-proton/core
+module github.com/leggerezza/android-proton/core
 
 go 1.26.0
 

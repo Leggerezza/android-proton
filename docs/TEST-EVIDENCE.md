@@ -275,7 +275,7 @@ go test ./... -count=1 -v
 ```
 
 ```
-?   	github.com/dsh/android-proton/core/protonnode	[no test files]
+?   	github.com/leggerezza/android-proton/core/protonnode	[no test files]
 
 [exit 0]
 ```
@@ -316,7 +316,7 @@ BUILD SUCCESSFUL in 13s
 APK 信息（`aapt2 dump badging` + sha256）：
 
 ```
-package: name='io.github.dsh.protonnode.debug' versionCode='1' versionName='0.1.0' platformBuildVersionName='16' platformBuildVersionCode='36' compileSdkVersion='36' compileSdkVersionCodename='16'
+package: name='io.github.leggerezza.protonnode.debug' versionCode='1' versionName='0.1.0' platformBuildVersionName='16' platformBuildVersionCode='36' compileSdkVersion='36' compileSdkVersionCodename='16'
 minSdkVersion:'26'
 targetSdkVersion:'36'
 uses-permission: name='android.permission.INTERNET'
@@ -471,7 +471,7 @@ BUILD SUCCESSFUL in 9s
 
 apk: app/build/outputs/apk/debug/app-debug.apk = 871846 bytes
 F:\Temp\clone-test\core> go test ./... -count=1
-?   github.com/dsh/android-proton/core/protonnode  [no test files]
+?   github.com/leggerezza/android-proton/core/protonnode  [no test files]
 [exit 0]
 ```
 
@@ -532,8 +532,8 @@ go vet ./...
 go test ./... -count=1 -v
 ```
 
-?   	github.com/dsh/android-proton/core/cmd/protonnode-cli	[no test files]
-?   	github.com/dsh/android-proton/core/proton	[no test files]
+?   	github.com/leggerezza/android-proton/core/cmd/protonnode-cli	[no test files]
+?   	github.com/leggerezza/android-proton/core/proton	[no test files]
 === RUN   TestGameModeDefaults
 --- PASS: TestGameModeDefaults (0.00s)
 === RUN   TestGameModeRejectsSecureCore
@@ -547,7 +547,7 @@ go test ./... -count=1 -v
 === RUN   TestRingLogKeepsNewest
 --- PASS: TestRingLogKeepsNewest (0.00s)
 PASS
-ok  	github.com/dsh/android-proton/core/protonnode	2.050s
+ok  	github.com/leggerezza/android-proton/core/protonnode	2.050s
 === RUN   TestLoopbackAddrRejectsNonLoopback
 --- PASS: TestLoopbackAddrRejectsNonLoopback (0.00s)
 === RUN   TestConnectRelay
@@ -555,7 +555,7 @@ ok  	github.com/dsh/android-proton/core/protonnode	2.050s
 === RUN   TestUDPAssociateIsRejected
 --- PASS: TestUDPAssociateIsRejected (0.00s)
 PASS
-ok  	github.com/dsh/android-proton/core/socks5	0.481s
+ok  	github.com/leggerezza/android-proton/core/socks5	0.481s
 === RUN   TestFrameRoundTrip
 --- PASS: TestFrameRoundTrip (0.00s)
 === RUN   TestHandshakeFrameIsNormal
@@ -563,20 +563,20 @@ ok  	github.com/dsh/android-proton/core/socks5	0.481s
 === RUN   TestDecodeRejectsGarbage
 --- PASS: TestDecodeRejectsGarbage (0.00s)
 PASS
-ok  	github.com/dsh/android-proton/core/stealth	1.353s
+ok  	github.com/leggerezza/android-proton/core/stealth	1.353s
 === RUN   TestWriteJSONIsAtomicAndPrivate
 --- PASS: TestWriteJSONIsAtomicAndPrivate (0.01s)
 === RUN   TestNewRejectsEmptyDir
 --- PASS: TestNewRejectsEmptyDir (0.00s)
 PASS
-ok  	github.com/dsh/android-proton/core/store	0.042s
+ok  	github.com/leggerezza/android-proton/core/store	0.042s
 === RUN   TestStealthTunnelEndToEnd
     integration_test.go:132: handshake ok in 251ms (SNI fonts.gstatic.com)
 ERROR: srv: 2026/11/18 21:00:41 peer(iK5x…88ng) - Failed to send data packets: stealth(listen): write: write tcp 127.0.0.1:62063->127.0.0.1:62064: wsasend: An established connection was aborted by the software in your host machine.
 ERROR: srv: 2026/11/18 21:00:41 Bind close failed: tls: failed to send closeNotify alert (but connection was closed anyway): write tcp 127.0.0.1:62063->127.0.0.1:62064: wsasend: An established connection was aborted by the software in your host machine.
 --- PASS: TestStealthTunnelEndToEnd (0.69s)
 PASS
-ok  	github.com/dsh/android-proton/core/tunnel	2.021s
+ok  	github.com/leggerezza/android-proton/core/tunnel	2.021s
 
 [exit 0]
 
@@ -805,11 +805,11 @@ Configuration cache entry reused.
 ```xml
 <?xml version='1.0' encoding='UTF-8' ?>
 <testsuites tests="1" failures="0" errors="0" skipped="0" time="0.000" timestamp="2026-11-18T13:05:24" hostname="localhost">
-  <testsuite name="io.github.dsh.protonnode.CoreBridgeTest" tests="1" failures="0" errors="0" skipped="0" time="0.014" timestamp="2026-11-18T13:05:24" hostname="localhost">
+  <testsuite name="io.github.leggerezza.protonnode.CoreBridgeTest" tests="1" failures="0" errors="0" skipped="0" time="0.014" timestamp="2026-11-18T13:05:24" hostname="localhost">
     <properties>
       <property name="device" value="10.241.100.148_41427" />
     </properties>
-    <testcase name="initStatusAndShutdownWork" classname="io.github.dsh.protonnode.CoreBridgeTest" time="0.014" />
+    <testcase name="initStatusAndShutdownWork" classname="io.github.leggerezza.protonnode.CoreBridgeTest" time="0.014" />
   </testsuite>
 </testsuites>
 ```
@@ -900,7 +900,7 @@ PAGE_SIZE: 16384
 abilist: x86_64,arm64-v8a
 
 ## JNI smoke (x86_64 AAR, debug APK built with -PemulatorAbi=x86_64)
-am instrument -> OK (1 test)   [io.github.dsh.protonnode.CoreBridgeTest.initStatusAndShutdownWork]
+am instrument -> OK (1 test)   [io.github.leggerezza.protonnode.CoreBridgeTest.initStatusAndShutdownWork]
 
 ## socks5 test binary (11 tests)
 --- PASS: TestLoopbackAddrRejectsNonLoopback (0.00s)
@@ -937,7 +937,7 @@ gomobile bind -target=android/amd64 -androidapi 26 -o app/libs/core-x86_64.aar .
 ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest -PemulatorAbi=x86_64
 adb -s emulator-5554 install -r app/build/outputs/apk/debug/app-debug.apk
 adb -s emulator-5554 install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-adb -s emulator-5554 shell am instrument -w io.github.dsh.protonnode.debug.test/androidx.test.runner.AndroidJUnitRunner
+adb -s emulator-5554 shell am instrument -w io.github.leggerezza.protonnode.debug.test/androidx.test.runner.AndroidJUnitRunner
 
 # 3. 把 Go 测试二进制也跑在同一个 16 KB guest 上
 GOOS=android GOARCH=amd64 CGO_ENABLED=1 CC=$NDK/toolchains/llvm/prebuilt/windows-x86_64/bin/x86_64-linux-android26-clang \
@@ -1015,7 +1015,7 @@ go test ./... -count=1 -v
 === RUN   TestServerClosesListenerOnCancel
 --- PASS: TestServerClosesListenerOnCancel (0.10s)
 PASS
-ok  	github.com/dsh/android-proton/core/socks5	2.172s
+ok  	github.com/leggerezza/android-proton/core/socks5	2.172s
 === RUN   TestFrameRoundTrip
 --- PASS: TestFrameRoundTrip (0.00s)
 === RUN   TestHandshakeFrameIsNormal
@@ -1023,13 +1023,13 @@ ok  	github.com/dsh/android-proton/core/socks5	2.172s
 === RUN   TestDecodeRejectsGarbage
 --- PASS: TestDecodeRejectsGarbage (0.00s)
 PASS
-ok  	github.com/dsh/android-proton/core/stealth	1.129s
+ok  	github.com/leggerezza/android-proton/core/stealth	1.129s
 === RUN   TestWriteJSONIsAtomicAndPrivate
 --- PASS: TestWriteJSONIsAtomicAndPrivate (0.01s)
 === RUN   TestNewRejectsEmptyDir
 --- PASS: TestNewRejectsEmptyDir (0.00s)
 PASS
-ok  	github.com/dsh/android-proton/core/store	0.034s
+ok  	github.com/leggerezza/android-proton/core/store	0.034s
 === RUN   TestTCPHalfCloseThroughTunnel
 --- PASS: TestTCPHalfCloseThroughTunnel (0.69s)
 === RUN   TestStealthTunnelEndToEnd
@@ -1039,7 +1039,7 @@ ERROR: srv: 2026/11/18 21:57:28 Bind close failed: tls: failed to send closeNoti
 === RUN   TestUDPThroughTunnel
 --- PASS: TestUDPThroughTunnel (0.69s)
 PASS
-ok  	github.com/dsh/android-proton/core/tunnel	3.227s
+ok  	github.com/leggerezza/android-proton/core/tunnel	3.227s
 
 [exit 0]
 ```
@@ -1195,7 +1195,7 @@ cd core && go vet ./... && go test ./... -count=1 -v
 === RUN   TestServerClosesListenerOnCancel
 --- PASS: TestServerClosesListenerOnCancel (0.10s)
 PASS
-ok  	github.com/dsh/android-proton/core/socks5	1.160s
+ok  	github.com/leggerezza/android-proton/core/socks5	1.160s
 === RUN   TestFrameRoundTrip
 --- PASS: TestFrameRoundTrip (0.00s)
 === RUN   TestHandshakeFrameIsNormal
@@ -1203,13 +1203,13 @@ ok  	github.com/dsh/android-proton/core/socks5	1.160s
 === RUN   TestDecodeRejectsGarbage
 --- PASS: TestDecodeRejectsGarbage (0.00s)
 PASS
-ok  	github.com/dsh/android-proton/core/stealth	0.046s
+ok  	github.com/leggerezza/android-proton/core/stealth	0.046s
 === RUN   TestWriteJSONIsAtomicAndPrivate
 --- PASS: TestWriteJSONIsAtomicAndPrivate (0.01s)
 === RUN   TestNewRejectsEmptyDir
 --- PASS: TestNewRejectsEmptyDir (0.00s)
 PASS
-ok  	github.com/dsh/android-proton/core/store	0.053s
+ok  	github.com/leggerezza/android-proton/core/store	0.053s
 === RUN   TestTCPHalfCloseThroughTunnel
 ERROR: wg: 2026/11/19 13:26:16 peer(zOd+…KREw) - Failed to send data packets: use of closed network connection
 --- PASS: TestTCPHalfCloseThroughTunnel (0.69s)
@@ -1222,7 +1222,7 @@ ERROR: srv: 2026/11/19 13:26:17 Bind close failed: tls: failed to send closeNoti
 === RUN   TestUDPThroughTunnel
 --- PASS: TestUDPThroughTunnel (0.69s)
 PASS
-ok  	github.com/dsh/android-proton/core/tunnel	2.129s
+ok  	github.com/leggerezza/android-proton/core/tunnel	2.129s
 
 [exit 0]
 ```
@@ -1312,7 +1312,7 @@ docs/schemas/scan-progress.schema.json
 ### P4-E1 单元测试（JVM，CI 可跑）
 
 ```
-io.github.dsh.protonnode.NotificationTextTest: tests=5 failures=0 errors=0
+io.github.leggerezza.protonnode.NotificationTextTest: tests=5 failures=0 errors=0
   - collapsedTextFollowsTheState
   - detailedTextShowsTheLastErrorWhenNotConnected
   - detailedTextShowsPortTrafficAndUptime
@@ -1328,7 +1328,7 @@ io.github.dsh.protonnode.NotificationTextTest: tests=5 failures=0 errors=0
         A: http://schemas.android.com/apk/res/android:name(0x01010003)="android.permission.POST_NOTIFICATIONS" (Raw: "android.permission.POST_NOTIFICATIONS")
         A: http://schemas.android.com/apk/res/android:name(0x01010003)="android.permission.WAKE_LOCK" (Raw: "android.permission.WAKE_LOCK")
         A: http://schemas.android.com/apk/res/android:name(0x01010003)="android.permission.RECEIVE_BOOT_COMPLETED" (Raw: "android.permission.RECEIVE_BOOT_COMPLETED")
-            A: http://schemas.android.com/apk/res/android:name(0x01010003)="io.github.dsh.protonnode.service.ProtonService" (Raw: "io.github.dsh.protonnode.service.ProtonService")
+            A: http://schemas.android.com/apk/res/android:name(0x01010003)="io.github.leggerezza.protonnode.service.ProtonService" (Raw: "io.github.leggerezza.protonnode.service.ProtonService")
             A: http://schemas.android.com/apk/res/android:foregroundServiceType(0x01010599)=0x40000000
                     A: http://schemas.android.com/apk/res/android:name(0x01010003)="android.intent.action.BOOT_COMPLETED" (Raw: "android.intent.action.BOOT_COMPLETED")
                     A: http://schemas.android.com/apk/res/android:name(0x01010003)="android.intent.action.BOOT_COMPLETED" (Raw: "android.intent.action.BOOT_COMPLETED")
@@ -1347,10 +1347,10 @@ io.github.dsh.protonnode.NotificationTextTest: tests=5 failures=0 errors=0
 
 ```
 TEST-OPD2514 - 16.xml: <testsuites tests="4" failures="0" errors="0" skipped="0" time="0.000" timestamp="2026-11-19T14:03:37" hostname="localhost">
-  PASS io.github.dsh.protonnode.CoreBridgeTest.initStatusAndShutdownWork (0.009s)
-  PASS io.github.dsh.protonnode.ServiceLifecycleTest.startBringsTheServiceUpAndStopTakesItDown (0.255s)
-  PASS io.github.dsh.protonnode.ServiceLifecycleTest.notificationChannelExists (0.000s)
-  PASS io.github.dsh.protonnode.SessionStoreTest.roundTripAndClear (0.073s)
+  PASS io.github.leggerezza.protonnode.CoreBridgeTest.initStatusAndShutdownWork (0.009s)
+  PASS io.github.leggerezza.protonnode.ServiceLifecycleTest.startBringsTheServiceUpAndStopTakesItDown (0.255s)
+  PASS io.github.leggerezza.protonnode.ServiceLifecycleTest.notificationChannelExists (0.000s)
+  PASS io.github.leggerezza.protonnode.SessionStoreTest.roundTripAndClear (0.073s)
 ```
 
 `ServiceLifecycleTest` 现在会先写入一个**假会话**，让状态机真的跑起来：
@@ -1492,7 +1492,7 @@ adb shell wm size reset
 ### P5-E9 日志（FLAG_SECURE 生效时仍可读无障碍树）
 
 ```
-04:14:24.755 core: initialized (dir /data/user/0/io.github.dsh.protonnode.debug/files/core)
+04:14:24.755 core: initialized (dir /data/user/0/io.github.leggerezza.protonnode.debug/files/core)
 04:14:24.772 session: loaded for device protonnode-c88460e1 (uid sfg3i4qc…)
 04:14:27.431 servers: 2784 logical servers from the API
 04:14:29.678 start: mode game, socks 127.0.0.1:1080, mtu 1320, fingerprint chrome
@@ -1571,8 +1571,8 @@ adb shell wm size reset
 
 | 进程 | 目标 | 命中的规则 | 出口 |
 |---|---|---|---|
-| `io.github.dsh.protonnode.debug` | 156.146.45.139:443（我们的隧道） | `ProcessName io.github…` | **DIRECT** ✅ |
-| `io.github.dsh.protonnode.debug` | api.protonmail.ch:443（API） | `ProcessName io.github…` | **DIRECT** ✅ |
+| `io.github.leggerezza.protonnode.debug` | 156.146.45.139:443（我们的隧道） | `ProcessName io.github…` | **DIRECT** ✅ |
+| `io.github.leggerezza.protonnode.debug` | api.protonmail.ch:443（API） | `ProcessName io.github…` | **DIRECT** ✅ |
 | ChatGPT / Google / 微信 / Chrome | 各自目标 | `Match` | `proton-node`（= 我们的 SOCKS5） ✅ |
 
 这张图同时证明了三件事：
@@ -1617,7 +1617,7 @@ Last error: pinned server "JP#173" did not pass L3 verification:
 | com.tencent.mm | wximg.wxs.qq.com:443 | DomainSuffix qq.com | **DIRECT** |
 | com.tencent.mm | mmbiz.qpic.cn:443 | **GeoSite cn** | **DIRECT** |
 | com.tencent.mm | 43.168.102.50:443 | **GeoIP cn** | **DIRECT** |
-| io.github.dsh.protonnode.debug | api.protonmail.ch:443 | ProcessName io.github… | **DIRECT** |
+| io.github.leggerezza.protonnode.debug | api.protonmail.ch:443 | ProcessName io.github… | **DIRECT** |
 
 微信不再被绕到 Proton 出口；`GEOSITE,cn` 在 FlClash 里能正常加载（48 条规则没报解析错误），
 `GEOIP,CN,no-resolve` 也按预期只处理字面 IP。
@@ -1651,8 +1651,8 @@ Last error: pinned server "JP#173" did not pass L3 verification:
 | jp.nonbili.noutube | music.youtube.com:443 | **proton-node** | ↓169 KB / ↑699 KB |
 | com.google.android.gms | www.googleapis.com:443 | **proton-node** | ↓3.2 KB |
 | com.android.vending | connectivitycheck.gstatic.com | **proton-node** | ↓3.5 KB |
-| io.github.dsh.protonnode.debug | 212.102.51.121:443（隧道本体） | **DIRECT** | ↓447 KB / ↑938 KB |
-| io.github.dsh.protonnode.debug | api.protonmail.ch:443 | **DIRECT** | ↓1.1 MB |
+| io.github.leggerezza.protonnode.debug | 212.102.51.121:443（隧道本体） | **DIRECT** | ↓447 KB / ↑938 KB |
+| io.github.leggerezza.protonnode.debug | api.protonmail.ch:443 | **DIRECT** | ↓1.1 MB |
 
 NouTube 首页已经能加载出歌单/歌曲（文字）；缩略图很慢（当时面板只有 7.8 KB/s），属于吞吐问题，
 不是「连不上」。之前 Gemini/NouTube 打不开，对应的是 `rep 0x4` 那段（当时的服务器出口不可用），

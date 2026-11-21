@@ -318,7 +318,7 @@ adb push                                      # 真机：登录 → 握手 → �
 |---|---|
 | **AGP 9.5.1 + Gradle 9.6.0**，不用 PROMPT §6.1 提到的 “AGP 8.9+” | AGP 8.9 只支持到 Gradle 8.x，与 JDK 25 组合跑不动；§6.1 的实质要求是 **16 KB 支持**，由 AGP≥8.5.1 + `useLegacyPackaging=false` 满足，已实测 `zipalign -c -P 16` 通过。 |
 | `core/go.mod` 写 `go 1.24.0`，CI 用 Go 1.27.4 | §6.1 要求 “Go 1.24+”；基线锁定 1.27.4。go.mod 取最低可用，CI/本机取基线版本，两者都能编。 |
-| `applicationId = io.github.dsh.protonnode`，debug 加 `.debug` 后缀 | 包名是 FlClash `PROCESS-NAME` 规则的键（§5.6 防环路），必须先定死；debug 后缀让真机可并存安装（§7 A11）。 |
+| `applicationId = io.github.leggerezza.protonnode`，debug 加 `.debug` 后缀 | 包名是 FlClash `PROCESS-NAME` 规则的键（§5.6 防环路），必须先定死；debug 后缀让真机可并存安装（§7 A11）。 |
 | ktlint 14.2.0 落地（Gradle 插件） | §9.5 的 pre-commit 与 CI 都要求 ktlint；`./gradlew :app:ktlintCheck` 实测通过。 |
 | CI 用 JDK 25 | 与本地证据一致；AGP 9 要求 JDK 17+。 |
 | P0 **不写任何 UI、不写隧道代码** | §0.2 阶段门：P1/P2 未过禁止 UI。骨架里只有一个空 `Application` 类用于验证 Kotlin 工具链。 |

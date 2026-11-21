@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 package protonnode
 
-import "github.com/dsh/android-proton/core/proton"
+import "github.com/leggerezza/android-proton/core/proton"
 
 // protoServerFixture builds a minimal logical server for the selection tests.
 type protoServerFixture struct {

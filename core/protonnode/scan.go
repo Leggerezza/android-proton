@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 package protonnode
 
 import (
@@ -9,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dsh/android-proton/core/proton"
-	"github.com/dsh/android-proton/core/scan"
-	"github.com/dsh/android-proton/core/stealth"
+	"github.com/leggerezza/android-proton/core/proton"
+	"github.com/leggerezza/android-proton/core/scan"
+	"github.com/leggerezza/android-proton/core/stealth"
 )
 
 // Scan orchestration for the gomobile contract (PROMPT.md 5.1 + 5.5):

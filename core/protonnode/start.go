@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 package protonnode
 
 import (
@@ -10,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dsh/android-proton/core/socks5"
-	"github.com/dsh/android-proton/core/stealth"
-	"github.com/dsh/android-proton/core/tunnel"
+	"github.com/leggerezza/android-proton/core/socks5"
+	"github.com/leggerezza/android-proton/core/stealth"
+	"github.com/leggerezza/android-proton/core/tunnel"
 )
 
 // Timing constants. The reconnect delay and the health-check cadence come from

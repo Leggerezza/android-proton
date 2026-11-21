@@ -161,7 +161,7 @@ try {
 
     Write-Step "running the JNI smoke test"
     $instrument = Invoke-Adb -AdbArgs @("-s", $serial, "shell", "am", "instrument", "-w",
-        "io.github.dsh.protonnode.debug.test/androidx.test.runner.AndroidJUnitRunner")
+        "io.github.leggerezza.protonnode.debug.test/androidx.test.runner.AndroidJUnitRunner")
     $instrument.Text | Out-Host
     if ($instrument.Text -notmatch "OK \(1 test\)") { throw "instrumentation did not report OK (1 test)" }
 

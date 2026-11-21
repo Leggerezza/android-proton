@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Package proton speaks the Proton VPN API: token handling, server
 // (logicals) discovery and WireGuard certificate provisioning.
 package proton

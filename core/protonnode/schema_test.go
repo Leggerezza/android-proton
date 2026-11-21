@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 package protonnode
 
 import (
@@ -6,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dsh/android-proton/core/scan"
+	"github.com/leggerezza/android-proton/core/scan"
 )
 
 // checkRequired verifies that every field the schema marks as required is

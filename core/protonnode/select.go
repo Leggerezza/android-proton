@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 package protonnode
 
 import (
@@ -10,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dsh/android-proton/core/proton"
+	"github.com/leggerezza/android-proton/core/proton"
 )
 
 // serverRow is what ListServers returns (a trimmed LogicalServer: the raw API

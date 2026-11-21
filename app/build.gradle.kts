@@ -31,13 +31,13 @@ android {
         compose = true
         buildConfig = true
     }
-    namespace = "io.github.dsh.protonnode"
+    namespace = "io.github.leggerezza.protonnode"
     compileSdk = 36
     // Pinned to the NDK that produced the P1 evidence (r28c, 16 KB ready).
     ndkVersion = "28.2.13676358"
 
     defaultConfig {
-        applicationId = "io.github.dsh.protonnode"
+        applicationId = "io.github.leggerezza.protonnode"
         minSdk = 26
         targetSdk = 36
         versionCode = 1

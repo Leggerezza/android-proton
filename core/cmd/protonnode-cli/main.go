@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Command protonnode-cli drives core/protonnode for verification on a desktop
 // and, cross-compiled for android/arm64, on a device through adb shell.
 //
@@ -20,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dsh/android-proton/core/protonnode"
+	"github.com/leggerezza/android-proton/core/protonnode"
 )
 
 const version = "0.1.0"

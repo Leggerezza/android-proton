@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Package protonnode is the gomobile-facing Android core of the Proton node.
 //
 // P1 scope (PROMPT.md 5.1 subset): Init, Shutdown, Login, Logout, SetSession,

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Package store persists the node's non-secret state (server cache, last used
 // server, preferences) inside a caller-provided directory.
 //

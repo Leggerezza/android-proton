@@ -1,0 +1,61 @@
+Categories:
+  - Internet
+License: GPL-3.0-or-later
+AuthorName: Leggerezza
+SourceCode: https://github.com/Leggerezza/android-proton
+IssueTracker: https://github.com/Leggerezza/android-proton/issues
+
+AutoName: Proton Node
+
+Summary: Local SOCKS5 node for the Proton Stealth tunnel
+Description: |
+  A local SOCKS5 node that speaks ProtonVPN's "Stealth" transport
+  (WireGuard inside TLS on TCP/443) and exposes it as an ordinary SOCKS5
+  proxy on 127.0.0.1:1080, so a rule-based proxy client such as FlClash or
+  mihomo can decide which app and which destination uses it.
+
+  Features:
+  * three-level server verification (TCP, TLS, and a full WireGuard handshake);
+    only a verified entry is used for automatic selection;
+  * per-network result cache (30 minutes) invalidated when the network changes;
+  * manual server / country selection, with a typed two-letter country code;
+  * Secure Core, P2P, Tor and Streaming servers are labelled and filterable;
+  * a foreground service with a silent ongoing notification, network-change
+    reconnect, boot restart and a best-effort health check;
+  * a generated mihomo/FlClash profile whose first rule keeps this app itself
+    out of the proxy (no loop), with domestic traffic decided by GEOSITE/GeoIP.
+
+  The app does not create a VPN interface: routing is left to the user's proxy
+  client. It needs a Proton account; the session is stored encrypted with an
+  Android Keystore key.
+
+
+RepoType: git
+Repo: https://github.com/Leggerezza/android-proton.git
+
+AntiFeatures:
+  - NonFreeNet
+
+# Build note: go.mod requires Go >= 1.26 (tool directive + dependencies), while the
+# standard F-Droid image ships an older Go. Before submitting, either confirm a
+# newer base image is available or downgrade the module to the image's Go.
+Builds:
+  - versionName: 0.1.0
+    versionCode: 1
+    commit: v0.1.0
+    ndk: 28.2.13676358
+    sudo:
+      - apt-get update
+      - apt-get install -y --no-install-recommends golang-go openjdk-17-jdk-headless
+    init: |
+      export GOPATH=$HOME/go
+      export PATH=$GOPATH/bin:$PATH
+    build: |
+      export GOPATH=$HOME/go
+      export PATH=$GOPATH/bin:$PATH
+      export ANDROID_NDK_HOME=$NDK
+      go install golang.org/x/mobile/cmd/gomobile@v0.0.0-20261117202452-47699113848a
+      gomobile init
+      scripts/build-core-aar.sh
+      ./gradlew --no-daemon assembleRelease
+    output: app/build/outputs/apk/release/app-release-unsigned.apk

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Package socks5 implements the SOCKS5 server the node exposes to mihomo /
 // FlClash.
 //

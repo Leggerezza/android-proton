@@ -134,6 +134,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/), generated with git-clif
 - **P6**: server features are now surfaced (`secureCore/p2p/tor/streaming`), shown as badges in
   the server list and filterable (P2P 1971, Tor 7 of 2784); game mode excludes Secure Core and Tor.
 
+### Changed (release identity)
+
+- The application id and Kotlin namespace are now `io.github.leggerezza.protonnode`
+  (GitHub: [Leggerezza](https://github.com/Leggerezza)); the Go module moved to
+  `github.com/leggerezza/android-proton/core`.
+- Every Go and Kotlin source file carries an `SPDX-License-Identifier: GPL-3.0-or-later`
+  header; README gained a license/provenance section.
+- `metadata/io.github.leggerezza.protonnode/` holds the draft F-Droid recipe
+  (`metadata.yml`, `build.sh`, `LICENSE`, NonFreeNet anti-feature).
+
 ### Changed
 
 - CI: JDK 25 + Go 1.27.4, ktlint/Android Lint gate, release-APK path fixed for

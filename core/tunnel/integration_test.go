@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 package tunnel_test
 
 import (
@@ -24,9 +25,9 @@ import (
 	"golang.zx2c4.com/wireguard/device"
 	tnetstack "golang.zx2c4.com/wireguard/tun/netstack"
 
-	"github.com/dsh/android-proton/core/socks5"
-	"github.com/dsh/android-proton/core/stealth"
-	"github.com/dsh/android-proton/core/tunnel"
+	"github.com/leggerezza/android-proton/core/socks5"
+	"github.com/leggerezza/android-proton/core/stealth"
+	"github.com/leggerezza/android-proton/core/tunnel"
 )
 
 // TestStealthTunnelEndToEnd runs the complete sidecar stack against a local

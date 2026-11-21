@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Package scan implements the three-level server verification from PROMPT.md 5.5:
 //
 //	L1  TCP connect to the entry IP (3s)
@@ -23,8 +24,8 @@ import (
 
 	utls "github.com/refraction-networking/utls"
 
-	"github.com/dsh/android-proton/core/stealth"
-	"github.com/dsh/android-proton/core/tunnel"
+	"github.com/leggerezza/android-proton/core/stealth"
+	"github.com/leggerezza/android-proton/core/tunnel"
 )
 
 // Level is the verification depth.

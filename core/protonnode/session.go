@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 package protonnode
 
 import (
@@ -9,8 +10,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dsh/android-proton/core/proton"
-	"github.com/dsh/android-proton/core/stealth"
+	"github.com/leggerezza/android-proton/core/proton"
+	"github.com/leggerezza/android-proton/core/stealth"
 )
 
 // sessionJSON is the credential bundle that the Android app stores encrypted.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Package tunnel wires the Stealth bind into a userspace WireGuard device
 // backed by a gVisor netstack. Nothing is installed on the host: no TUN
 // adapter, no routes, no admin rights.
@@ -18,7 +19,7 @@ import (
 	"golang.zx2c4.com/wireguard/device"
 	tnetstack "golang.zx2c4.com/wireguard/tun/netstack"
 
-	"github.com/dsh/android-proton/core/stealth"
+	"github.com/leggerezza/android-proton/core/stealth"
 )
 
 // Defaults match Proton's own client: the tunnel address is 10.2.0.2 and the

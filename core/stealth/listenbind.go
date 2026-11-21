@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 package stealth
 
 import (
@@ -27,9 +28,9 @@ type ListenBind struct {
 	cert             tls.Certificate
 	handshakeTimeout time.Duration
 
-	ready      chan struct{}
-	readyOnce  sync.Once
-	accepting  atomic.Bool
+	ready     chan struct{}
+	readyOnce sync.Once
+	accepting atomic.Bool
 
 	mu       sync.Mutex
 	conn     *tls.Conn
