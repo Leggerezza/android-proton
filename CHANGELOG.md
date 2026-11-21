@@ -134,6 +134,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/), generated with git-clif
 - **P6**: server features are now surfaced (`secureCore/p2p/tor/streaming`), shown as badges in
   the server list and filterable (P2P 1971, Tor 7 of 2784); game mode excludes Secure Core and Tor.
 
+### Security
+
+- Dependencies bumped past four advisories found by govulncheck (brotli 1.2.7,
+  klauspost/compress 1.20.2, cloudflare/circl 1.6.3); `govulncheck` is clean now.
+- `.gitleaks.toml` allowlists the public Proton server keys quoted in the scan evidence
+  (the generic api-key heuristic was flagging them); gitleaks runs pinned at v8.30.1.
+
 ### Changed (release identity)
 
 - The application id and Kotlin namespace are now `io.github.leggerezza.protonnode`

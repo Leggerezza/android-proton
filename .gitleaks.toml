@@ -1,0 +1,13 @@
+# gitleaks configuration.
+#
+# The scan evidence in docs/TEST-EVIDENCE.md quotes Proton's /vpn/logicals JSON, which
+# includes each server's X25519 public key ("serverKey"). Those keys are public data
+# returned by an unauthenticated-ish API and are not credentials, but the generic
+# api-key heuristic flags them. Keep the rule everywhere else.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Proton server public keys quoted as scan evidence"
+paths = ['''docs/TEST-EVIDENCE\.md''']
+rules = ["generic-api-key"]
