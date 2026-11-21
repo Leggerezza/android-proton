@@ -2,6 +2,11 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/), generated with git-cliff.
 
+## 0.1.1 — 2026-11-21
+
+First public build: the identity moved to `io.github.leggerezza.protonnode`, the repository is
+public, and CI builds the Go core before Gradle. govulncheck findings fixed (brotli,
+klauspost/compress, circl); gitleaks allowlists the public server keys quoted as evidence.
 ## [Unreleased]
 
 ### Added

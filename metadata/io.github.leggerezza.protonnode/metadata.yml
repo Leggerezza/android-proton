@@ -40,9 +40,9 @@ AntiFeatures:
 # standard F-Droid image ships an older Go. Before submitting, either confirm a
 # newer base image is available or downgrade the module to the image's Go.
 Builds:
-  - versionName: 0.1.0
-    versionCode: 1
-    commit: v0.1.0
+  - versionName: 0.1.1
+    versionCode: 2
+    commit: v0.1.1
     ndk: 28.2.13676358
     sudo:
       - apt-get update
