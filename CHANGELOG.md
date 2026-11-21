@@ -4,6 +4,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/), generated with git-clif
 
 ## 0.1.2 — 2026-11-21
 
+- Latency in the server list (measured by the last scan), the current server marked, and a
+  "By latency" sort; the home screen now shows live ↓/↑ rates instead of only totals.
+- In-tunnel DNS answers are cached for 60 s: a music player opening many connections to the
+  same hosts no longer pays a DNS round trip each time.
+
 - Region pinning: `US-CA` / `US-WA` in the default-country field selects a region by
   server-name prefix, so a US exit can be the west coast instead of US-CO/US-NY.
 

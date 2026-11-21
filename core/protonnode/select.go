@@ -28,6 +28,7 @@ type serverRow struct {
 	Tor          bool    `json:"tor,omitempty"`
 	Streaming    bool    `json:"streaming,omitempty"`
 	EntryIP      string  `json:"entryIP,omitempty"`
+	RTTMs        int64   `json:"rttMs,omitempty"`
 	Tier         int     `json:"tier"`
 }
 

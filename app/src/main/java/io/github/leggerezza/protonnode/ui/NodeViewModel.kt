@@ -2,6 +2,7 @@
 package io.github.leggerezza.protonnode.ui
 
 import android.app.Application
+import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.leggerezza.protonnode.core.CoreController
@@ -32,6 +33,14 @@ class NodeViewModel(
 
     private val _status = MutableStateFlow(CoreController.lastStatus)
     val status: StateFlow<StatusSnapshot> = _status.asStateFlow()
+
+    // Throughput is derived from two consecutive status snapshots; the UI needs a
+    // rate, not just the cumulative counters the core reports.
+    private val _rxRate = MutableStateFlow(0L)
+    val rxRate: StateFlow<Long> = _rxRate.asStateFlow()
+    private val _txRate = MutableStateFlow(0L)
+    val txRate: StateFlow<Long> = _txRate.asStateFlow()
+    private var lastSampleAt = 0L
 
     private val _session = MutableStateFlow(SessionInfo.signedOut)
     val session: StateFlow<SessionInfo> = _session.asStateFlow()
@@ -94,7 +103,24 @@ class NodeViewModel(
     }
 
     private suspend fun refreshStatus() {
-        _status.value = CoreController.status()
+        val next = CoreController.status()
+        val now = SystemClock.elapsedRealtime()
+        val prev = _status.value
+        val dt = now - lastSampleAt
+        if (lastSampleAt > 0 && dt in 200..10_000 && next.uptimeSec >= prev.uptimeSec) {
+            _rxRate.value = ((next.rxBytes - prev.rxBytes).coerceAtLeast(0) * 1000 / dt)
+            _txRate.value = ((next.txBytes - prev.txBytes).coerceAtLeast(0) * 1000 / dt)
+        } else {
+            _rxRate.value = 0
+            _txRate.value = 0
+        }
+        lastSampleAt = now
+        _status.value = next
+    }
+
+    /** Called by the screens that show live numbers; cheap and safe to call often. */
+    fun tick() {
+        viewModelScope.launch { refreshStatus() }
     }
 
     private suspend fun refreshSession() {

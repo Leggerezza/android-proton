@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/leggerezza/android-proton/core/scan"
 	"os"
 	"strings"
 	"sync"
@@ -453,9 +454,31 @@ func ListServers(country string, secureCore bool) (string, error) {
 		SecureCore: secureCore,
 	}
 	matches := proton.Select(servers, f)
+	// Measured RTTs come from the last L3 scan: the UI shows them so the user can
+	// see why an entry is slow before connecting to it.
+	rtts := map[string]int64{}
+	eng.mu.Lock()
+	st := eng.store
+	eng.mu.Unlock()
+	if st != nil {
+		if c := scan.LoadCache(effectiveStore(st)); c != nil {
+			for _, res := range c.Results {
+				if res.RTTMs <= 0 {
+					continue
+				}
+				if prev, ok := rtts[res.EntryIP]; !ok || res.RTTMs < prev {
+					rtts[res.EntryIP] = res.RTTMs
+				}
+			}
+		}
+	}
 	out := make([]serverRow, 0, len(matches))
 	for i := range matches {
-		out = append(out, serverRowOf(&matches[i]))
+		row := serverRowOf(&matches[i])
+		if ms, ok := rtts[row.EntryIP]; ok {
+			row.RTTMs = ms
+		}
+		out = append(out, row)
 	}
 	eng.logfOrNil("servers: %d of %d match (country %q secure-core %v)", len(out), len(servers), country, secureCore)
 	buf, err := json.Marshal(out)

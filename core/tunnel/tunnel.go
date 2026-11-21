@@ -13,6 +13,7 @@ import (
 	"net/netip"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	utls "github.com/refraction-networking/utls"
@@ -50,6 +51,9 @@ type Tunnel struct {
 	dev  *device.Device
 	net  *tnetstack.Net
 	bind *stealth.Bind
+
+	dnsMu    sync.Mutex
+	dnsCache map[string]dnsEntry
 }
 
 // New creates the device and configures the single peer (0.0.0.0/0).
@@ -205,7 +209,27 @@ func (t *Tunnel) DialTCPAddrPort(ctx context.Context, addr netip.AddrPort) (net.
 
 // ResolveHost resolves host inside the tunnel, using the tunnel's DNS server
 // (10.2.0.1). Nothing is resolved on the host, so no plaintext lookup leaks.
+// dnsTTL bounds how long a resolved name is reused. The tunnel is rebuilt on
+// every connect and on a network change, so stale entries cannot outlive it.
+const dnsTTL = 60 * time.Second
+
+type dnsEntry struct {
+	addrs   []netip.Addr
+	expires time.Time
+}
+
 func (t *Tunnel) ResolveHost(ctx context.Context, host string) ([]netip.Addr, error) {
+	// A SOCKS client such as mihomo sends hostnames, not addresses, so a music
+	// player that opens dozens of image/API connections pays a DNS round trip
+	// inside the tunnel for each new one. Cache the answer briefly instead.
+	t.dnsMu.Lock()
+	if e, ok := t.dnsCache[host]; ok && time.Now().Before(e.expires) {
+		addrs := e.addrs
+		t.dnsMu.Unlock()
+		return addrs, nil
+	}
+	t.dnsMu.Unlock()
+
 	addrs, err := t.net.LookupContextHost(ctx, host)
 	if err != nil {
 		return nil, fmt.Errorf("tunnel: resolve %q: %w", host, err)
@@ -219,6 +243,18 @@ func (t *Tunnel) ResolveHost(ctx context.Context, host string) ([]netip.Addr, er
 	if len(out) == 0 {
 		return nil, fmt.Errorf("tunnel: resolve %q: no usable address", host)
 	}
+	t.dnsMu.Lock()
+	if t.dnsCache == nil {
+		t.dnsCache = make(map[string]dnsEntry)
+	}
+	if len(t.dnsCache) >= 256 {
+		for k := range t.dnsCache {
+			delete(t.dnsCache, k)
+			break
+		}
+	}
+	t.dnsCache[host] = dnsEntry{addrs: out, expires: time.Now().Add(dnsTTL)}
+	t.dnsMu.Unlock()
 	return out, nil
 }
 

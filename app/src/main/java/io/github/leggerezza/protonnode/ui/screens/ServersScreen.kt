@@ -48,6 +48,7 @@ data class ServerRow(
     val tor: Boolean,
     val streaming: Boolean,
     val entryIP: String,
+    val rttMs: Long,
 )
 
 private val GAME_ORDER = listOf("JP", "HK", "KR", "SG", "US")
@@ -67,6 +68,7 @@ fun parseServers(json: String): List<ServerRow> =
                 tor = o.optBoolean("tor", false),
                 streaming = o.optBoolean("streaming", false),
                 entryIP = o.optString("entryIP", ""),
+                rttMs = o.optLong("rttMs", 0L),
             )
         }
     }.getOrDefault(emptyList())
@@ -85,6 +87,9 @@ fun ServersScreen(vm: NodeViewModel) {
     LaunchedEffect(Unit) { vm.loadServers() }
     var gameOnly by remember(mode) { mutableStateOf(false) }
     var featureFilter by remember { mutableStateOf("") }
+    var byLatency by remember { mutableStateOf(false) }
+    val status by vm.status.collectAsStateWithLifecycle()
+    val currentServer = status.server
 
     val all = remember(serversJson) { parseServers(serversJson) }
     val signedIn = sessionInfo.isUsable
@@ -110,7 +115,9 @@ fun ServersScreen(vm: NodeViewModel) {
                 }
             }.filter { row -> !(mode == "game" && gameOnly) || row.country in GAME_ORDER }
             .sortedWith(
-                if (mode == "game") {
+                if (byLatency) {
+                    compareBy({ if (it.rttMs > 0) 0 else 1 }, { it.rttMs })
+                } else if (mode == "game") {
                     compareBy({ GAME_ORDER.indexOf(it.country).let { i -> if (i < 0) 99 else i } }, { it.load })
                 } else {
                     compareBy({ it.name })
@@ -163,6 +170,11 @@ fun ServersScreen(vm: NodeViewModel) {
                         label = { Text("JP/HK/KR/SG/US") },
                     )
                 }
+                FilterChip(
+                    selected = byLatency,
+                    onClick = { byLatency = !byLatency },
+                    label = { Text("By latency") },
+                )
             }
             Row(
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -217,8 +229,10 @@ fun ServersScreen(vm: NodeViewModel) {
                                     }
                                 Text(
                                     row.country +
+                                        (if (row.name == currentServer) " · Current" else "") +
                                         (if (badges.isNotEmpty()) " · " + badges.joinToString(" · ") else "") +
-                                        (if (row.entryIP.isNotEmpty()) " · " + row.entryIP else ""),
+                                        (if (row.entryIP.isNotEmpty()) " · " + row.entryIP else "") +
+                                        " · " + (if (row.rttMs > 0) row.rttMs.toString() + " ms" else "—"),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )

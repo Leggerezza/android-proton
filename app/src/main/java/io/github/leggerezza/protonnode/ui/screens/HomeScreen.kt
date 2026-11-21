@@ -37,6 +37,14 @@ fun HomeScreen(
     expanded: Boolean,
 ) {
     val status by vm.status.collectAsStateWithLifecycle()
+    val rxRate by vm.rxRate.collectAsStateWithLifecycle()
+    val txRate by vm.txRate.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) {
+        while (true) {
+            vm.tick()
+            kotlinx.coroutines.delay(1000)
+        }
+    }
     val sessionInfo by vm.session.collectAsStateWithLifecycle()
     val pinnedServer by vm.preferredServer.collectAsStateWithLifecycle()
 
@@ -86,11 +94,11 @@ fun HomeScreen(
         if (expanded) {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 DetailsCard(status, Modifier.weight(1f))
-                TrafficCard(status, Modifier.weight(1f))
+                TrafficCard(status, rxRate, txRate, Modifier.weight(1f))
             }
         } else {
             DetailsCard(status, Modifier.fillMaxWidth())
-            TrafficCard(status, Modifier.fillMaxWidth())
+            TrafficCard(status, rxRate, txRate, Modifier.fillMaxWidth())
         }
         if (pinnedServer.isNotEmpty()) {
             Text(
@@ -168,17 +176,24 @@ private fun DetailsCard(
 @Composable
 private fun TrafficCard(
     status: StatusSnapshot,
+    rxRate: Long,
+    txRate: Long,
     modifier: Modifier,
 ) {
     OutlinedCard(modifier) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(R.string.home_traffic), style = MaterialTheme.typography.labelLarge)
-            infoRow("↓", formatBytes(status.rxBytes))
-            infoRow("↑", formatBytes(status.txBytes))
+            // Rate first: it answers "is it slow right now?", the totals do not.
+            infoRow("↓ " + formatRate(rxRate), formatBytes(status.rxBytes))
+            infoRow("↑ " + formatRate(txRate), formatBytes(status.txBytes))
             infoRow(stringResource(R.string.home_uptime), formatUptime(status.uptimeSec))
         }
     }
 }
+
+/** Formats bytes per second, e.g. "12.3 KB/s". */
+private fun formatRate(bytesPerSecond: Long): String =
+    if (bytesPerSecond <= 0) "0 B/s" else formatBytes(bytesPerSecond) + "/s"
 
 @Composable
 private fun infoRow(
