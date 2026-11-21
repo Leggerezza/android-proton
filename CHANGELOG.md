@@ -138,7 +138,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/), generated with git-clif
 
 - The application id and Kotlin namespace are now `io.github.leggerezza.protonnode`
   (GitHub: [Leggerezza](https://github.com/Leggerezza)); the Go module moved to
-  `github.com/leggerezza/android-proton/core`.
+  `github.com/Leggerezza/android-proton/core`.
 - Every Go and Kotlin source file carries an `SPDX-License-Identifier: GPL-3.0-or-later`
   header; README gained a license/provenance section.
 - `metadata/io.github.leggerezza.protonnode/` holds the draft F-Droid recipe

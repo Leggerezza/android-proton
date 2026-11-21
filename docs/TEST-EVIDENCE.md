@@ -275,7 +275,7 @@ go test ./... -count=1 -v
 ```
 
 ```
-?   	github.com/leggerezza/android-proton/core/protonnode	[no test files]
+?   	github.com/Leggerezza/android-proton/core/protonnode	[no test files]
 
 [exit 0]
 ```
@@ -471,7 +471,7 @@ BUILD SUCCESSFUL in 9s
 
 apk: app/build/outputs/apk/debug/app-debug.apk = 871846 bytes
 F:\Temp\clone-test\core> go test ./... -count=1
-?   github.com/leggerezza/android-proton/core/protonnode  [no test files]
+?   github.com/Leggerezza/android-proton/core/protonnode  [no test files]
 [exit 0]
 ```
 
@@ -532,8 +532,8 @@ go vet ./...
 go test ./... -count=1 -v
 ```
 
-?   	github.com/leggerezza/android-proton/core/cmd/protonnode-cli	[no test files]
-?   	github.com/leggerezza/android-proton/core/proton	[no test files]
+?   	github.com/Leggerezza/android-proton/core/cmd/protonnode-cli	[no test files]
+?   	github.com/Leggerezza/android-proton/core/proton	[no test files]
 === RUN   TestGameModeDefaults
 --- PASS: TestGameModeDefaults (0.00s)
 === RUN   TestGameModeRejectsSecureCore
@@ -547,7 +547,7 @@ go test ./... -count=1 -v
 === RUN   TestRingLogKeepsNewest
 --- PASS: TestRingLogKeepsNewest (0.00s)
 PASS
-ok  	github.com/leggerezza/android-proton/core/protonnode	2.050s
+ok  	github.com/Leggerezza/android-proton/core/protonnode	2.050s
 === RUN   TestLoopbackAddrRejectsNonLoopback
 --- PASS: TestLoopbackAddrRejectsNonLoopback (0.00s)
 === RUN   TestConnectRelay
@@ -555,7 +555,7 @@ ok  	github.com/leggerezza/android-proton/core/protonnode	2.050s
 === RUN   TestUDPAssociateIsRejected
 --- PASS: TestUDPAssociateIsRejected (0.00s)
 PASS
-ok  	github.com/leggerezza/android-proton/core/socks5	0.481s
+ok  	github.com/Leggerezza/android-proton/core/socks5	0.481s
 === RUN   TestFrameRoundTrip
 --- PASS: TestFrameRoundTrip (0.00s)
 === RUN   TestHandshakeFrameIsNormal
@@ -563,20 +563,20 @@ ok  	github.com/leggerezza/android-proton/core/socks5	0.481s
 === RUN   TestDecodeRejectsGarbage
 --- PASS: TestDecodeRejectsGarbage (0.00s)
 PASS
-ok  	github.com/leggerezza/android-proton/core/stealth	1.353s
+ok  	github.com/Leggerezza/android-proton/core/stealth	1.353s
 === RUN   TestWriteJSONIsAtomicAndPrivate
 --- PASS: TestWriteJSONIsAtomicAndPrivate (0.01s)
 === RUN   TestNewRejectsEmptyDir
 --- PASS: TestNewRejectsEmptyDir (0.00s)
 PASS
-ok  	github.com/leggerezza/android-proton/core/store	0.042s
+ok  	github.com/Leggerezza/android-proton/core/store	0.042s
 === RUN   TestStealthTunnelEndToEnd
     integration_test.go:132: handshake ok in 251ms (SNI fonts.gstatic.com)
 ERROR: srv: 2026/11/18 21:00:41 peer(iK5x…88ng) - Failed to send data packets: stealth(listen): write: write tcp 127.0.0.1:62063->127.0.0.1:62064: wsasend: An established connection was aborted by the software in your host machine.
 ERROR: srv: 2026/11/18 21:00:41 Bind close failed: tls: failed to send closeNotify alert (but connection was closed anyway): write tcp 127.0.0.1:62063->127.0.0.1:62064: wsasend: An established connection was aborted by the software in your host machine.
 --- PASS: TestStealthTunnelEndToEnd (0.69s)
 PASS
-ok  	github.com/leggerezza/android-proton/core/tunnel	2.021s
+ok  	github.com/Leggerezza/android-proton/core/tunnel	2.021s
 
 [exit 0]
 
@@ -1015,7 +1015,7 @@ go test ./... -count=1 -v
 === RUN   TestServerClosesListenerOnCancel
 --- PASS: TestServerClosesListenerOnCancel (0.10s)
 PASS
-ok  	github.com/leggerezza/android-proton/core/socks5	2.172s
+ok  	github.com/Leggerezza/android-proton/core/socks5	2.172s
 === RUN   TestFrameRoundTrip
 --- PASS: TestFrameRoundTrip (0.00s)
 === RUN   TestHandshakeFrameIsNormal
@@ -1023,13 +1023,13 @@ ok  	github.com/leggerezza/android-proton/core/socks5	2.172s
 === RUN   TestDecodeRejectsGarbage
 --- PASS: TestDecodeRejectsGarbage (0.00s)
 PASS
-ok  	github.com/leggerezza/android-proton/core/stealth	1.129s
+ok  	github.com/Leggerezza/android-proton/core/stealth	1.129s
 === RUN   TestWriteJSONIsAtomicAndPrivate
 --- PASS: TestWriteJSONIsAtomicAndPrivate (0.01s)
 === RUN   TestNewRejectsEmptyDir
 --- PASS: TestNewRejectsEmptyDir (0.00s)
 PASS
-ok  	github.com/leggerezza/android-proton/core/store	0.034s
+ok  	github.com/Leggerezza/android-proton/core/store	0.034s
 === RUN   TestTCPHalfCloseThroughTunnel
 --- PASS: TestTCPHalfCloseThroughTunnel (0.69s)
 === RUN   TestStealthTunnelEndToEnd
@@ -1039,7 +1039,7 @@ ERROR: srv: 2026/11/18 21:57:28 Bind close failed: tls: failed to send closeNoti
 === RUN   TestUDPThroughTunnel
 --- PASS: TestUDPThroughTunnel (0.69s)
 PASS
-ok  	github.com/leggerezza/android-proton/core/tunnel	3.227s
+ok  	github.com/Leggerezza/android-proton/core/tunnel	3.227s
 
 [exit 0]
 ```
@@ -1195,7 +1195,7 @@ cd core && go vet ./... && go test ./... -count=1 -v
 === RUN   TestServerClosesListenerOnCancel
 --- PASS: TestServerClosesListenerOnCancel (0.10s)
 PASS
-ok  	github.com/leggerezza/android-proton/core/socks5	1.160s
+ok  	github.com/Leggerezza/android-proton/core/socks5	1.160s
 === RUN   TestFrameRoundTrip
 --- PASS: TestFrameRoundTrip (0.00s)
 === RUN   TestHandshakeFrameIsNormal
@@ -1203,13 +1203,13 @@ ok  	github.com/leggerezza/android-proton/core/socks5	1.160s
 === RUN   TestDecodeRejectsGarbage
 --- PASS: TestDecodeRejectsGarbage (0.00s)
 PASS
-ok  	github.com/leggerezza/android-proton/core/stealth	0.046s
+ok  	github.com/Leggerezza/android-proton/core/stealth	0.046s
 === RUN   TestWriteJSONIsAtomicAndPrivate
 --- PASS: TestWriteJSONIsAtomicAndPrivate (0.01s)
 === RUN   TestNewRejectsEmptyDir
 --- PASS: TestNewRejectsEmptyDir (0.00s)
 PASS
-ok  	github.com/leggerezza/android-proton/core/store	0.053s
+ok  	github.com/Leggerezza/android-proton/core/store	0.053s
 === RUN   TestTCPHalfCloseThroughTunnel
 ERROR: wg: 2026/11/19 13:26:16 peer(zOd+…KREw) - Failed to send data packets: use of closed network connection
 --- PASS: TestTCPHalfCloseThroughTunnel (0.69s)
@@ -1222,7 +1222,7 @@ ERROR: srv: 2026/11/19 13:26:17 Bind close failed: tls: failed to send closeNoti
 === RUN   TestUDPThroughTunnel
 --- PASS: TestUDPThroughTunnel (0.69s)
 PASS
-ok  	github.com/leggerezza/android-proton/core/tunnel	2.129s
+ok  	github.com/Leggerezza/android-proton/core/tunnel	2.129s
 
 [exit 0]
 ```

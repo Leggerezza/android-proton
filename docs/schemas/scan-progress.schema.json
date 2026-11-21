@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/leggerezza/android-proton/schemas/scan-progress.schema.json",
+  "$id": "https://github.com/Leggerezza/android-proton/schemas/scan-progress.schema.json",
   "title": "ScanProgress",
   "description": "Payload of protonnode.ScanProgress(scanID)",
   "type": "object",

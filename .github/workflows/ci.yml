@@ -15,14 +15,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
-        with: { distribution: temurin, java-version: '25' }
-
       - uses: actions/setup-go@v5
         with: { go-version: '1.27.4' }
 
       - name: Go vet + tests
         run: cd core && go vet ./... && go test ./... -count=1 -race
+
+      - name: Build the Go core (AAR)
+        uses: ./.github/actions/android-core
+
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '25' }
 
       - name: Android unit tests
         run: ./gradlew :app:testDebugUnitTest --stacktrace

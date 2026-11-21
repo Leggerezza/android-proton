@@ -1,0 +1,37 @@
+name: Build the Go core
+description: Installs the pinned NDK and gomobile, then produces app/libs/core.aar
+inputs:
+  ndk-version:
+    description: Android NDK version
+    required: false
+    default: "28.2.13676358"
+  gomobile-version:
+    description: Pinned gomobile revision
+    required: false
+    default: "v0.0.0-20261117202452-47699113848a"
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-java@v4
+      with: { distribution: temurin, java-version: '17' }
+
+    - name: Install the NDK
+      shell: bash
+      run: |
+        SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+        if [ ! -x "$SDKMANAGER" ]; then SDKMANAGER="$ANDROID_HOME/cmdline-tools/bin/sdkmanager"; fi
+        yes | "$SDKMANAGER" --licenses >/dev/null || true
+        "$SDKMANAGER" --install "ndk;${{ inputs.ndk-version }}"
+        echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/${{ inputs.ndk-version }}" >> "$GITHUB_ENV"
+
+    - name: Install gomobile
+      shell: bash
+      run: |
+        go install golang.org/x/mobile/cmd/gomobile@${{ inputs.gomobile-version }}
+        echo "$HOME/go/bin" >> "$GITHUB_PATH"
+
+    - name: Build app/libs/core.aar
+      shell: bash
+      run: |
+        gomobile init
+        bash scripts/build-core-aar.sh

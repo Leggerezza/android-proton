@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/leggerezza/android-proton/schemas/scan-results.schema.json",
+  "$id": "https://github.com/Leggerezza/android-proton/schemas/scan-results.schema.json",
   "title": "ScanResults",
   "description": "Payload of protonnode.ScanResults(scanID) - PROMPT.md 5.1/5.5",
   "type": "object",
