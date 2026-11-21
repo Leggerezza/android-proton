@@ -350,9 +350,23 @@ func (e *engine) pickCandidates(ctx context.Context, servers []proton.LogicalSer
 // inlineScan runs a blocking L3 scan over the candidates and returns the
 // verified ones (bounded, so a cold connect stays reasonable).
 func (e *engine) inlineScan(ctx context.Context, candidates []proton.LogicalServer, cfg startConfig) ([]candidate, error) {
-	const maxTargets = 48
-	targets := make([]scan.Target, 0, maxTargets)
+	// A cheap TCP pre-pass orders the pool by measured RTT before the expensive
+	// TLS + WireGuard ladder runs. Proton's Score is a load figure, not a
+	// latency one, so without this a user in Asia can end up on a US entry
+	// (1.2 s+ per request) simply because those servers scored better.
+	const (
+		maxPool    = 200
+		maxTargets = 24
+	)
+	pool := make([]scan.Target, 0, maxPool)
 	byEntry := map[string]proton.LogicalServer{}
+	// In automatic mode the candidate list is ordered by Proton's load score, so
+	// taking the head of it concentrates the pool in a few (often distant)
+	// countries. Cap the number of entries per exit country instead, so the RTT
+	// pre-pass gets to see the nearby ones too.
+	pinned := cfg.Country != "" || cfg.Server != ""
+	const perCountry = 4
+	perCountryCount := map[string]int{}
 	for i := range candidates {
 		s := &candidates[i]
 		ps := s.BestPhysical()
@@ -362,17 +376,34 @@ func (e *engine) inlineScan(ctx context.Context, candidates []proton.LogicalServ
 		if _, dup := byEntry[ps.EntryIP]; dup {
 			continue
 		}
+		if !pinned {
+			if perCountryCount[s.ExitCountry] >= perCountry {
+				continue
+			}
+			perCountryCount[s.ExitCountry]++
+		}
 		byEntry[ps.EntryIP] = *s
-		targets = append(targets, scan.Target{
+		pool = append(pool, scan.Target{
 			Server: s.Name, EntryIP: ps.EntryIP, Port: 443, ServerKey: ps.X25519PublicKey,
 			Country: s.ExitCountry, Score: s.Score, Load: s.Load,
 		})
-		if len(targets) >= maxTargets {
+		if len(pool) >= maxPool {
 			break
 		}
 	}
-	if len(targets) == 0 {
+	if len(pool) == 0 {
 		return nil, errors.New("scan: no target with a WireGuard key")
+	}
+
+	targets := pool
+	if len(pool) > maxTargets {
+		fastest, err := e.fastestByRTT(ctx, pool, maxTargets)
+		if err != nil {
+			e.logfOrNil("scan: RTT pre-pass failed (%v), keeping the pool order", err)
+		} else {
+			targets = fastest
+			e.logfOrNil("scan: RTT pre-pass kept %d of %d entries (%s)", len(targets), len(pool), rttSummary(targets))
+		}
 	}
 	e.mu.Lock()
 	kp, kerr := e.session.keyPair()
@@ -422,6 +453,62 @@ func (e *engine) inlineScan(ctx context.Context, candidates []proton.LogicalServ
 	summary, _ := json.Marshal(results)
 	e.logfOrNil("scan: L3 verified %s", string(summary))
 	return candidatesFromResults(nil, results), nil
+}
+
+// fastestByRTT probes the pool with plain TCP connects and returns the
+// quickest entries, keeping the scan's own ordering when timings tie.
+func (e *engine) fastestByRTT(ctx context.Context, pool []scan.Target, limit int) ([]scan.Target, error) {
+	runner, err := scan.New(pool, scan.Options{
+		Level:       scan.LevelTCP,
+		Concurrency: 48,
+		L1Timeout:   3 * time.Second,
+		Logf:        e.logfOrNil,
+	})
+	if err != nil {
+		return nil, err
+	}
+	done := runner.Start(ctx)
+	select {
+	case <-done:
+	case <-ctx.Done():
+		runner.Cancel()
+		<-done
+		return nil, ctx.Err()
+	}
+	results := runner.Results()
+	if len(results) == 0 {
+		return nil, errors.New("scan: no entry answered on TCP")
+	}
+	byEntry := map[string]scan.Target{}
+	for _, t := range pool {
+		byEntry[t.EntryIP] = t
+	}
+	out := make([]scan.Target, 0, limit)
+	for _, res := range results {
+		if t, ok := byEntry[res.EntryIP]; ok {
+			out = append(out, t)
+			if len(out) >= limit {
+				break
+			}
+		}
+	}
+	if len(out) == 0 {
+		return nil, errors.New("scan: RTT results did not map back to targets")
+	}
+	return out, nil
+}
+
+// rttSummary renders the first few entries with their measured RTT for the log.
+func rttSummary(targets []scan.Target) string {
+	parts := make([]string, 0, len(targets))
+	for _, t := range targets {
+		parts = append(parts, t.Server+" "+t.EntryIP)
+	}
+	const max = 5
+	if len(parts) > max {
+		parts = append(parts[:max], "...")
+	}
+	return strings.Join(parts, ", ")
 }
 
 // candidatesFromResults maps verified entries back onto the server list (when

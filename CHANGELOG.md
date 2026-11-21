@@ -2,6 +2,12 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/), generated with git-cliff.
 
+## 0.1.2 — 2026-11-21
+
+Latency: normal mode no longer pins the country order to `US, CA, NL` (that put an Asia user
+on a US exit, 1.2–2.2 s per request). Automatic selection now scans a country-diverse pool
+ordered by a cheap TCP RTT pre-pass, so the nearest entry wins instead of the one with the
+best load score. Game mode keeps its JP/HK/KR/SG/US shortlist but also measures RTT first.
 ## 0.1.1 — 2026-11-21
 
 First public build: the identity moved to `io.github.leggerezza.protonnode`, the repository is

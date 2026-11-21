@@ -31,8 +31,8 @@ func TestNormalModeDefaultsAndValidation(t *testing.T) {
 	if err := cfg.applyDefaults(); err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Mode != "normal" || len(cfg.Prefer) != 3 || cfg.Prefer[0] != "US" {
-		t.Fatalf("normal defaults: %+v", cfg)
+	if cfg.Mode != "normal" || len(cfg.Prefer) != 0 {
+		t.Fatalf("normal mode must not pin a country order: %+v", cfg)
 	}
 	if cfg.LockServer != nil {
 		t.Fatal("normal mode should not force the server lock")

@@ -89,9 +89,10 @@ func (c *startConfig) applyDefaults() error {
 			c.LockServer = &v
 		}
 	}
-	if len(c.Prefer) == 0 {
-		c.Prefer = []string{"US", "CA", "NL"}
-	}
+	// No default country order outside game mode: a fixed list pins the user to
+	// whatever the list author had in mind (US/CA/NL put an Asia user 150 ms+
+	// away from every exit). With no preference the scan covers many countries
+	// and the RTT pre-pass picks the nearest entry.
 	for i := range c.Prefer {
 		c.Prefer[i] = strings.ToUpper(strings.TrimSpace(c.Prefer[i]))
 	}
