@@ -191,6 +191,22 @@ fun SettingsScreen(vm: NodeViewModel) {
                     color = MaterialTheme.colorScheme.primary,
                 )
             }
+            val mtuValue by vm.mtu.collectAsStateWithLifecycle()
+            Text(stringResource(R.string.settings_mtu), style = MaterialTheme.typography.labelLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(1200, 1320, 1420).forEach { value ->
+                    FilterChip(
+                        selected = mtuValue == value,
+                        onClick = { vm.setMtu(value) },
+                        label = { Text(value.toString()) },
+                    )
+                }
+            }
+            Text(
+                stringResource(R.string.settings_mtu_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             if (mode == "game") {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(stringResource(R.string.settings_game_lock), Modifier.weight(1f))

@@ -17,6 +17,7 @@ import (
 	"io"
 	"net"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -177,10 +178,12 @@ func (s *Server) handle(ctx context.Context, c net.Conn) {
 	defer cancel()
 	upstream, err := s.Dial(dialCtx, "tcp", target)
 	if err != nil {
-		// The destination is user data: log the SOCKS reply code, never the
-		// host (PROMPT.md 0.5 / 2: no destination logging by default).
+		// The destination is user data: log the SOCKS reply code and the failure
+		// class, never the host (PROMPT.md 0.5 / 2: no destination logging by
+		// default). The class is what tells an IPv6 target (no route) apart from a
+		// DNS failure, which look identical as "rep 0x4".
 		rep := replyForError(err)
-		s.Logf("socks5: CONNECT failed (rep %#x)", rep)
+		s.Logf("socks5: CONNECT failed (rep %#x, %s, %s)", rep, addressFamily(target), errorClass(err))
 		_ = writeReply(c, rep, nil)
 		return
 	}
@@ -344,4 +347,39 @@ func relay(a, b net.Conn) {
 	go cp(a, b)
 	go cp(b, a)
 	wg.Wait()
+}
+
+// addressFamily reports the target's family without logging the address itself.
+func addressFamily(target string) string {
+	host, _, err := net.SplitHostPort(target)
+	if err != nil {
+		return "family=?"
+	}
+	host = strings.Trim(host, "[]")
+	if strings.Contains(host, ":") {
+		return "family=ipv6"
+	}
+	if ip := net.ParseIP(host); ip == nil {
+		return "family=name"
+	}
+	return "family=ipv4"
+}
+
+// errorClass reduces a dial error to a short, non-identifying class.
+func errorClass(err error) string {
+	msg := strings.ToLower(err.Error())
+	switch {
+	case strings.Contains(msg, "network is unreachable"), strings.Contains(msg, "no route"):
+		return "unreachable"
+	case strings.Contains(msg, "timeout"), strings.Contains(msg, "deadline"):
+		return "timeout"
+	case strings.Contains(msg, "refused"):
+		return "refused"
+	case strings.Contains(msg, "no such host"), strings.Contains(msg, "not found"), strings.Contains(msg, "lookup"):
+		return "dns"
+	case strings.Contains(msg, "reset"):
+		return "reset"
+	default:
+		return "error"
+	}
 }

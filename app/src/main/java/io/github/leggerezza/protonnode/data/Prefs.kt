@@ -47,6 +47,11 @@ class Prefs(
         get() = prefs.getString(KEY_PREF_COUNTRY, "") ?: ""
         set(value) = prefs.edit().putString(KEY_PREF_COUNTRY, value).apply()
 
+    /** Tunnel MTU (default 1320; 1200 is gentler on a TCP carrier). */
+    var mtu: Int
+        get() = prefs.getInt(KEY_MTU, 1320)
+        set(value) = prefs.edit().putInt(KEY_MTU, value).apply()
+
     /** Lock the server while in game mode (PROMPT.md 7, default on). */
     var gameLock: Boolean
         get() = prefs.getBoolean(KEY_GAME_LOCK, true)
@@ -65,6 +70,8 @@ class Prefs(
         set(value) = prefs.edit().putBoolean(KEY_WANT_RUNNING, value).apply()
 
     companion object {
+        private const val KEY_MTU = "mtu"
+
         /** Game mode by default: the honest choice for the target device (PROMPT.md 7). */
         const val DEFAULT_CONFIG = "{\"mode\":\"game\",\"socksPort\":1080}"
 

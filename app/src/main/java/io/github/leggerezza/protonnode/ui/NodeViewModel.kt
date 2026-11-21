@@ -80,6 +80,9 @@ class NodeViewModel(
     private val _gameLock = MutableStateFlow(prefs.gameLock)
     val gameLock: StateFlow<Boolean> = _gameLock.asStateFlow()
 
+    private val _mtu = MutableStateFlow(prefs.mtu)
+    val mtu: StateFlow<Int> = _mtu.asStateFlow()
+
     private val _autostart = MutableStateFlow(prefs.autoStart)
     val autostart: StateFlow<Boolean> = _autostart.asStateFlow()
 
@@ -162,6 +165,7 @@ class NodeViewModel(
             gameLock = prefs.gameLock,
             server = prefs.preferredServer,
             country = prefs.preferredCountry,
+            mtu = prefs.mtu,
         )
 
     fun setThemeMode(value: String) {
@@ -222,6 +226,13 @@ class NodeViewModel(
             _preferredServer.value = ""
         }
         return true
+    }
+
+    /** 1200 is the safe floor over a TCP carrier; 1420 is the usual WireGuard value. */
+    fun setMtu(value: Int) {
+        val clamped = value.coerceIn(1200, 1420)
+        prefs.mtu = clamped
+        _mtu.value = clamped
     }
 
     fun clearSelection() {

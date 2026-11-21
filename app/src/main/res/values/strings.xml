@@ -120,4 +120,6 @@
     <string name="settings_default_country_hint">Two-letter code (JP) or a region (US-CA); empty means automatic</string>
     <string name="settings_default_country_invalid">Enter a two-letter code such as JP, US, DE</string>
     <string name="settings_default_country_saved">Default country set to %1$s</string>
+    <string name="settings_mtu">Tunnel MTU</string>
+    <string name="settings_mtu_hint">1200 is safer on a TCP carrier; 1420 is the usual WireGuard value. Applies on reconnect.</string>
 </resources>

@@ -120,4 +120,6 @@
     <string name="settings_default_country_hint">两位国家代码（JP）或地区（US-CA）；留空表示自动</string>
     <string name="settings_default_country_invalid">请输入两位字母的国家代码，例如 JP、US、DE</string>
     <string name="settings_default_country_saved">默认国家已设为 %1$s</string>
+    <string name="settings_mtu">隧道 MTU</string>
+    <string name="settings_mtu_hint">TCP 承载下 1200 更稳，1420 是 WireGuard 常用值；重连后生效。</string>
 </resources>

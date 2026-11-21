@@ -45,6 +45,12 @@ class StartConfigTest {
     }
 
     @Test
+    fun mtuIsPassedThroughAndDefaultsTo1320() {
+        assertEquals(1320, JSONObject(buildStartConfig("normal", false)).getInt("mtu"))
+        assertEquals(1200, JSONObject(buildStartConfig("normal", false, mtu = 1200)).getInt("mtu"))
+    }
+
+    @Test
     fun autoAddsNeitherField() {
         val cfg = JSONObject(buildStartConfig("game", true))
         assertFalse(cfg.has("server"))

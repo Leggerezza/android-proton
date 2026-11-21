@@ -38,6 +38,9 @@ profile:
 dns:
   enable: true
   enhanced-mode: fake-ip
+  # The node's tunnel has no IPv6 route, so an AAAA answer only produces failed
+  # dials (socks5 rep 0x4) before the client falls back to IPv4.
+  ipv6: false
   fake-ip-range: 198.18.0.1/16
   fake-ip-filter:
     - '*.lan'

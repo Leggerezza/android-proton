@@ -4,6 +4,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/), generated with git-clif
 
 ## 0.1.2 — 2026-11-21
 
+- Tunnel MTU is now a setting (1200 / 1320 / 1420, default 1320) and is passed through
+  the start config, so a TCP-carrier stall can be compared without a rebuild.
+- SOCKS CONNECT failures now log the address family and error class (never the destination),
+  which tells an IPv6 target with no route apart from a DNS failure.
+- The generated mihomo profile sets `dns.ipv6: false` so apps stop receiving AAAA answers
+  the tunnel cannot route.
+
 - Latency in the server list (measured by the last scan), the current server marked, and a
   "By latency" sort; the home screen now shows live ↓/↑ rates instead of only totals.
 - In-tunnel DNS answers are cached for 60 s: a music player opening many connections to the
