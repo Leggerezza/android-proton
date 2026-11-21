@@ -4,6 +4,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/), generated with git-clif
 
 ## 0.1.2 — 2026-11-21
 
+- Region pinning: `US-CA` / `US-WA` in the default-country field selects a region by
+  server-name prefix, so a US exit can be the west coast instead of US-CO/US-NY.
+
 Latency: normal mode no longer pins the country order to `US, CA, NL` (that put an Asia user
 on a US exit, 1.2–2.2 s per request). Automatic selection now scans a country-diverse pool
 ordered by a cheap TCP RTT pre-pass, so the nearest entry wins instead of the one with the

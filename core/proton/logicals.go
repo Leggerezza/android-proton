@@ -148,6 +148,7 @@ type Filter struct {
 	Country          string // ISO country code of the exit country
 	EntryCountry     string
 	Name             string // exact logical server name, e.g. "CH#10"
+	NamePrefix       string // prefix of the server name, e.g. "US-CA" for a region
 	SecureCore       bool
 	RequireP2P       bool
 	RequireTor       bool
@@ -165,6 +166,9 @@ func (f Filter) Match(s LogicalServer) bool {
 		return false
 	}
 	if f.Name != "" && !strings.EqualFold(s.Name, f.Name) {
+		return false
+	}
+	if f.NamePrefix != "" && !strings.HasPrefix(strings.ToUpper(s.Name), strings.ToUpper(f.NamePrefix)) {
 		return false
 	}
 	if f.Country != "" && !strings.EqualFold(s.ExitCountry, f.Country) {
@@ -231,6 +235,9 @@ func describeFilter(f Filter) string {
 	var parts []string
 	if f.Name != "" {
 		parts = append(parts, "name="+f.Name)
+	}
+	if f.NamePrefix != "" {
+		parts = append(parts, "prefix="+f.NamePrefix)
 	}
 	if f.Country != "" {
 		parts = append(parts, "country="+f.Country)

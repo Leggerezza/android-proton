@@ -106,8 +106,16 @@ func (e *engine) servers(ctx context.Context) ([]proton.LogicalServer, error) {
 // selectCandidates turns the server list into an ordered candidate list for
 // one connection attempt.
 func selectCandidates(servers []proton.LogicalServer, cfg *startConfig, tier int) []proton.LogicalServer {
+	// "US-CA" pins a region rather than a country: the exit country is still US,
+	// but the logical server names carry the state (US-CA#12), so a prefix match
+	// gives the user a west-coast exit about 60 ms closer than US-CO/US-NY.
+	country, prefix := cfg.Country, ""
+	if i := strings.IndexByte(country, '-'); i > 0 {
+		prefix, country = country[:i+3], country[:i]
+	}
 	base := proton.Filter{
-		Country:    cfg.Country,
+		Country:    country,
+		NamePrefix: prefix,
 		SecureCore: cfg.SecureCore,
 		Name:       cfg.Server,
 		TrustTier:  tier,

@@ -24,6 +24,17 @@ class CountryCodeTest {
     }
 
     @Test
+    fun regionCodesAreAccepted() {
+        assertEquals("US-CA", normalizeCountryCode("us-ca"))
+        assertEquals("US-CA", normalizeCountryCode(" US-CA "))
+        assertEquals("US-CA", normalizeCountryCode("us-ca".uppercase()))
+        assertNull(normalizeCountryCode("US-C"))
+        assertNull(normalizeCountryCode("USA-CA"))
+        assertNull(normalizeCountryCode("US-1A"))
+        assertNull(normalizeCountryCode("US-CA-NY"))
+    }
+
+    @Test
     fun invalidInputIsRejected() {
         assertNull(normalizeCountryCode("J"))
         assertNull(normalizeCountryCode("JPN"))
