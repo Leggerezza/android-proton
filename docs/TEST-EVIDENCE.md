@@ -1711,6 +1711,33 @@ Go 侧 `serverRow` 现在把 Proton 的特性位（`FeatureSecureCore/Tor/P2P/St
 ![p2p](evidence/p6-features-p2p.png)
 
 ![tor](evidence/p6-features-tor.png)
+### P7-E1 0.1.3 新增功能实测（2026-11-22 22:2x，平板 OPD2514）
+
+安装 `0.1.3`（versionCode 4）后逐项验证：
+
+**1. 首次启动声明**——只出现一次，Continue 倒计时 3 秒后可点：
+
+![countdown](evidence/p7-disclaimer-countdown.png)
+
+点 Continue 后再冷启动，弹窗不再出现（同一次会话的两张截图一致，prefs 里 `disclaimerAccepted=true`）：
+
+![accepted](evidence/p7-disclaimer-accepted.png)
+
+**2. 设置新增项**——传输方式（Stealth / WireGuard UDP）、Enable IPv6、排除国家/地区：
+
+![settings](evidence/p7-settings-transport-ipv6.png)
+
+**3. 排除国家/地区**——列表来自服务器清单，显示本地化国名 + 代码 + 数量，可搜索、可勾选：
+
+![dialog](evidence/p7-excluded-dialog.png)
+
+勾选 Andorra 后按钮变为 “Excluded countries: 1 selected”，prefs 写入 `excludedCountries=AD`：
+
+![selected](evidence/p7-excluded-selected.png)
+
+（验证后已取消勾选，恢复为空，避免影响后续测试。）
+
+**未在本轮验证**（需要网络实测）：UDP 传输的实际吞吐、IPv6 站点访问。
 ### P6-E2 与 PROMPT §7.1 的 8 条对照
 
 | # | 验收项 | 状态 |
