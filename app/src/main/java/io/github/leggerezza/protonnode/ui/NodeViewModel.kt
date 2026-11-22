@@ -80,6 +80,18 @@ class NodeViewModel(
     private val _gameLock = MutableStateFlow(prefs.gameLock)
     val gameLock: StateFlow<Boolean> = _gameLock.asStateFlow()
 
+    private val _disclaimerAccepted = MutableStateFlow(prefs.disclaimerAccepted)
+    val disclaimerAccepted: StateFlow<Boolean> = _disclaimerAccepted.asStateFlow()
+
+    private val _transport = MutableStateFlow(prefs.transport)
+    val transport: StateFlow<String> = _transport.asStateFlow()
+
+    private val _ipv6 = MutableStateFlow(prefs.ipv6)
+    val ipv6: StateFlow<Boolean> = _ipv6.asStateFlow()
+
+    private val _excludedCountries = MutableStateFlow(parseExcluded(prefs.excludedCountries))
+    val excludedCountries: StateFlow<Set<String>> = _excludedCountries.asStateFlow()
+
     private val _mtu = MutableStateFlow(prefs.mtu)
     val mtu: StateFlow<Int> = _mtu.asStateFlow()
 
@@ -166,6 +178,9 @@ class NodeViewModel(
             server = prefs.preferredServer,
             country = prefs.preferredCountry,
             mtu = prefs.mtu,
+            transport = prefs.transport,
+            ipv6 = prefs.ipv6,
+            excludedCountries = prefs.excludedCountries,
         )
 
     fun setThemeMode(value: String) {
@@ -226,6 +241,33 @@ class NodeViewModel(
             _preferredServer.value = ""
         }
         return true
+    }
+
+    fun acceptDisclaimer() {
+        prefs.disclaimerAccepted = true
+        _disclaimerAccepted.value = true
+    }
+
+    fun setTransport(value: String) {
+        val effective = if (value == "udp") "udp" else "stealth"
+        prefs.transport = effective
+        _transport.value = effective
+    }
+
+    fun setIpv6(enabled: Boolean) {
+        prefs.ipv6 = enabled
+        _ipv6.value = enabled
+    }
+
+    /** Adds or removes one exit country from the never-connect list. */
+    fun toggleExcludedCountry(code: String) {
+        val upper = code.trim().uppercase()
+        if (upper.isEmpty()) return
+        val next = _excludedCountries.value.toMutableSet()
+        if (!next.add(upper)) next.remove(upper)
+        val sorted = next.sorted()
+        prefs.excludedCountries = sorted.joinToString(",")
+        _excludedCountries.value = sorted.toSet()
     }
 
     /** 1200 is the safe floor over a TCP carrier; 1420 is the usual WireGuard value. */
@@ -436,3 +478,11 @@ data class LoginUi(
     val detail: String = "",
     val seconds: Long = 0,
 )
+
+/** Parses the comma separated exclusion list into ISO codes. */
+fun parseExcluded(raw: String): Set<String> =
+    raw
+        .split(',')
+        .map { it.trim().uppercase() }
+        .filter { it.isNotEmpty() }
+        .toSet()

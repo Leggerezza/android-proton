@@ -122,4 +122,18 @@
     <string name="settings_default_country_saved">Default country set to %1$s</string>
     <string name="settings_mtu">Tunnel MTU</string>
     <string name="settings_mtu_hint">1200 is safer on a TCP carrier; 1420 is the usual WireGuard value. Applies on reconnect.</string>
+    <string name="settings_transport">Transport</string>
+    <string name="settings_transport_stealth">Stealth (TCP)</string>
+    <string name="settings_transport_udp">WireGuard (UDP)</string>
+    <string name="settings_transport_hint">UDP is much faster where it is allowed; Stealth is the fallback for blocked networks. Applies on reconnect.</string>
+    <string name="settings_ipv6">Enable IPv6</string>
+    <string name="settings_ipv6_hint">Adds Proton\'s fixed IPv6 address; only servers with the IPv6 feature route it.</string>
+    <string name="settings_excluded_none">Excluded countries: none</string>
+    <string name="settings_excluded_selected">Excluded countries: %1$d selected</string>
+    <string name="settings_excluded_title">Excluded countries</string>
+    <string name="settings_excluded_hint">Servers in these countries are never connected, even when pinned.</string>
+    <string name="disclaimer_title">Third-party client</string>
+    <string name="disclaimer_body">Proton Node is an unofficial, open-source third-party client for Proton VPN.\n\nIt does not provide any VPN servers of its own: the servers belong to Proton and you need your own Proton account. The project is not affiliated with or endorsed by Proton AG.</string>
+    <string name="disclaimer_continue">Continue</string>
+    <string name="disclaimer_continue_in">Continue (%1$d)</string>
 </resources>

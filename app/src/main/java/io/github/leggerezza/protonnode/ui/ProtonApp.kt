@@ -31,7 +31,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.leggerezza.protonnode.R
+import io.github.leggerezza.protonnode.ui.screens.DisclaimerDialog
 import io.github.leggerezza.protonnode.ui.screens.HomeScreen
 import io.github.leggerezza.protonnode.ui.screens.LogsScreen
 import io.github.leggerezza.protonnode.ui.screens.ScanScreen
@@ -86,6 +88,10 @@ fun ProtonApp(vm: NodeViewModel) {
         onDispose { }
     }
 
+    val disclaimerAccepted by vm.disclaimerAccepted.collectAsStateWithLifecycle()
+    if (!disclaimerAccepted) {
+        DisclaimerDialog(onAccept = { vm.acceptDisclaimer() })
+    }
     Scaffold(
         bottomBar = {
             if (!wide) {

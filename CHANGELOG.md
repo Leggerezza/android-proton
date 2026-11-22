@@ -2,6 +2,19 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/), generated with git-cliff.
 
+## 0.1.3 — 2026-11-22
+
+- **WireGuard/UDP transport**: settings can switch the outer transport between Stealth
+  (WireGuard in TLS/TCP) and plain WireGuard over UDP, which is far faster where UDP is
+  allowed; the UDP port comes from /vpn/v2/clientconfig (fallback 51820).
+- **IPv6**: the tunnel can carry Proton's fixed IPv6 address and DNS
+  (2a07:b944::2:2 / ::2:1), adds \`::/0\` to the peer and only enables it on servers that
+  advertise the IPv6 feature (bit 16), matching the official client.
+- **Excluded countries**: a picker lists every exit country Proton offers (localised names)
+  and servers in the selected countries are never connected, even when pinned.
+- **First-run notice**: the app now states it is an unofficial third-party client without
+  VPN servers of its own; Continue unlocks after three seconds and the notice never returns.
+
 ## 0.1.2 — 2026-11-21
 
 - Tunnel MTU is now a setting (1200 / 1320 / 1420, default 1320) and is passed through

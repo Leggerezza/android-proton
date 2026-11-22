@@ -67,6 +67,7 @@ fun SettingsScreen(vm: NodeViewModel) {
     var countryText by remember(preferredCountry) { mutableStateOf(preferredCountry) }
     var countryError by remember { mutableStateOf(false) }
     var savedCountry by remember { mutableStateOf("") }
+    val serversJsonForExcluded by vm.servers.collectAsStateWithLifecycle()
 
     var dnsText by remember(apiDns) { mutableStateOf(apiDns) }
     var loginEmail by remember { mutableStateOf("") }
@@ -207,6 +208,54 @@ fun SettingsScreen(vm: NodeViewModel) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            val transportValue by vm.transport.collectAsStateWithLifecycle()
+            Text(stringResource(R.string.settings_transport), style = MaterialTheme.typography.labelLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = transportValue == "stealth",
+                    onClick = { vm.setTransport("stealth") },
+                    label = { Text(stringResource(R.string.settings_transport_stealth)) },
+                )
+                FilterChip(
+                    selected = transportValue == "udp",
+                    onClick = { vm.setTransport("udp") },
+                    label = { Text(stringResource(R.string.settings_transport_udp)) },
+                )
+            }
+            Text(
+                stringResource(R.string.settings_transport_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            val ipv6Value by vm.ipv6.collectAsStateWithLifecycle()
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.settings_ipv6), Modifier.weight(1f))
+                Switch(checked = ipv6Value, onCheckedChange = { vm.setIpv6(it) })
+            }
+            Text(
+                stringResource(R.string.settings_ipv6_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            val excluded by vm.excludedCountries.collectAsStateWithLifecycle()
+            var showExcluded by remember { mutableStateOf(false) }
+            OutlinedButton(onClick = { showExcluded = true }, modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    if (excluded.isEmpty()) {
+                        stringResource(R.string.settings_excluded_none)
+                    } else {
+                        stringResource(R.string.settings_excluded_selected, excluded.size)
+                    },
+                )
+            }
+            if (showExcluded) {
+                ExcludedCountriesDialog(
+                    serversJson = serversJsonForExcluded,
+                    selected = excluded,
+                    onToggle = { vm.toggleExcludedCountry(it) },
+                    onDismiss = { showExcluded = false },
+                )
+            }
             if (mode == "game") {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(stringResource(R.string.settings_game_lock), Modifier.weight(1f))
@@ -309,7 +358,7 @@ fun SettingsScreen(vm: NodeViewModel) {
                         ClipData.newPlainText(
                             "mihomo profile",
                             io.github.leggerezza.protonnode.data.FlClashConfig
-                                .generate(context.packageName),
+                                .generate(context.packageName, ipv6 = ipv6Value),
                         ),
                     )
                     message = flclashCopiedMessage

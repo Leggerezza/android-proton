@@ -107,6 +107,22 @@ func (e *engine) servers(ctx context.Context) ([]proton.LogicalServer, error) {
 // selectCandidates turns the server list into an ordered candidate list for
 // one connection attempt.
 func selectCandidates(servers []proton.LogicalServer, cfg *startConfig, tier int) []proton.LogicalServer {
+	// The exclusion list is a hard rule: a server in an excluded country is never
+	// a candidate, not even when the user pinned that country explicitly.
+	if len(cfg.ExcludeCountries) > 0 {
+		banned := make(map[string]struct{}, len(cfg.ExcludeCountries))
+		for _, cc := range cfg.ExcludeCountries {
+			banned[strings.ToUpper(strings.TrimSpace(cc))] = struct{}{}
+		}
+		kept := make([]proton.LogicalServer, 0, len(servers))
+		for _, s := range servers {
+			if _, bad := banned[strings.ToUpper(s.ExitCountry)]; bad {
+				continue
+			}
+			kept = append(kept, s)
+		}
+		servers = kept
+	}
 	// "US-CA" pins a region rather than a country: the exit country is still US,
 	// but the logical server names carry the state (US-CA#12), so a prefix match
 	// gives the user a west-coast exit about 60 ms closer than US-CO/US-NY.

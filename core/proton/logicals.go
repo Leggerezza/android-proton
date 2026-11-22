@@ -71,6 +71,9 @@ func (s LogicalServer) IsTor() bool { return s.HasFeature(FeatureTor) }
 // IsStreaming reports whether the server is a streaming server.
 func (s LogicalServer) IsStreaming() bool { return s.HasFeature(FeatureStreaming) }
 
+// IsIPv6Supported reports whether the server routes IPv6 to the internet.
+func (s LogicalServer) IsIPv6Supported() bool { return s.HasFeature(FeatureIPv6) }
+
 // EffectiveTier treats the legacy "basic" tier as Plus.
 func (s LogicalServer) EffectiveTier() int {
 	if s.Tier == TierBasic {
@@ -141,6 +144,25 @@ func (c *Client) StealthPort(ctx context.Context) int {
 		return cfg.DefaultPorts.WireGuard.TCP[0]
 	}
 	return 443
+}
+
+// WireGuardUDPPort discovers the UDP port Proton uses for plain WireGuard.
+// Like StealthPort it falls back to the standard 51820 when the API is quiet.
+func (c *Client) WireGuardUDPPort(ctx context.Context) int {
+	var cfg struct {
+		DefaultPorts struct {
+			WireGuard struct {
+				UDP []int `json:"UDP"`
+			} `json:"WireGuard"`
+		} `json:"DefaultPorts"`
+	}
+	if err := c.Get(ctx, "/vpn/v2/clientconfig", &cfg); err != nil {
+		return 51820
+	}
+	if len(cfg.DefaultPorts.WireGuard.UDP) > 0 && cfg.DefaultPorts.WireGuard.UDP[0] > 0 {
+		return cfg.DefaultPorts.WireGuard.UDP[0]
+	}
+	return 51820
 }
 
 // Filter narrows a server list. The zero value matches every server.

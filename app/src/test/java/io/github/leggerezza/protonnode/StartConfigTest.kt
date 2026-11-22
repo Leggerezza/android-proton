@@ -51,6 +51,32 @@ class StartConfigTest {
     }
 
     @Test
+    fun transportIpv6AndExclusionsAreEncoded() {
+        val cfg =
+            JSONObject(
+                buildStartConfig(
+                    "normal",
+                    false,
+                    transport = "udp",
+                    ipv6 = true,
+                    excludedCountries = "ru, cn ,RU",
+                ),
+            )
+        assertEquals("udp", cfg.getString("transport"))
+        assertTrue(cfg.getBoolean("ipv6"))
+        val excluded = cfg.getJSONArray("excludeCountries")
+        assertEquals(listOf("RU", "CN"), (0 until excluded.length()).map { excluded.getString(it) })
+    }
+
+    @Test
+    fun stealthIsTheDefaultAndNoExclusionsMeansNoField() {
+        val cfg = JSONObject(buildStartConfig("normal", false))
+        assertEquals("stealth", cfg.getString("transport"))
+        assertFalse(cfg.getBoolean("ipv6"))
+        assertFalse(cfg.has("excludeCountries"))
+    }
+
+    @Test
     fun autoAddsNeitherField() {
         val cfg = JSONObject(buildStartConfig("game", true))
         assertFalse(cfg.has("server"))

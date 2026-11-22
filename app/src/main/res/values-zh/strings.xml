@@ -122,4 +122,18 @@
     <string name="settings_default_country_saved">默认国家已设为 %1$s</string>
     <string name="settings_mtu">隧道 MTU</string>
     <string name="settings_mtu_hint">TCP 承载下 1200 更稳，1420 是 WireGuard 常用值；重连后生效。</string>
+    <string name="settings_transport">传输方式</string>
+    <string name="settings_transport_stealth">Stealth (TCP)</string>
+    <string name="settings_transport_udp">WireGuard (UDP)</string>
+    <string name="settings_transport_hint">允许 UDP 的网络里 UDP 快得多；Stealth 用于网络封锁时的回退。重连后生效。</string>
+    <string name="settings_ipv6">启用 IPv6</string>
+    <string name="settings_ipv6_hint">使用 Proton 固定的 IPv6 地址；只有带 IPv6 特性的服务器才会路由它。</string>
+    <string name="settings_excluded_none">排除的国家/地区：无</string>
+    <string name="settings_excluded_selected">排除的国家/地区：已选 %1$d 个</string>
+    <string name="settings_excluded_title">排除的国家/地区</string>
+    <string name="settings_excluded_hint">这些国家/地区的服务器永远不会被连接，即使手动指定也不行。</string>
+    <string name="disclaimer_title">第三方客户端</string>
+    <string name="disclaimer_body">Proton Node 是一个非官方的、开源的 Proton VPN 第三方客户端。\n\n它本身不提供任何 VPN 服务器：服务器属于 Proton，且需要你自己的 Proton 账号。本项目与 Proton AG 无隶属关系，也未获其背书。</string>
+    <string name="disclaimer_continue">继续</string>
+    <string name="disclaimer_continue_in">继续（%1$d）</string>
 </resources>

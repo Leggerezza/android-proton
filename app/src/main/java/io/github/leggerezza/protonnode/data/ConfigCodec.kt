@@ -90,6 +90,9 @@ fun buildStartConfig(
     server: String = "",
     country: String = "",
     mtu: Int = 1320,
+    transport: String = "stealth",
+    ipv6: Boolean = false,
+    excludedCountries: String = "",
 ): String {
     val effectiveMode = if (mode == "normal") "normal" else "game"
     val json =
@@ -98,6 +101,18 @@ fun buildStartConfig(
             .put("socksPort", socksPort)
             .put("lockServer", effectiveMode == "game" && gameLock)
             .put("mtu", mtu)
+            .put("transport", if (transport == "udp") "udp" else "stealth")
+            .put("ipv6", ipv6)
+    // A server in an excluded country is never a candidate, even when pinned.
+    val excluded =
+        excludedCountries
+            .split(',')
+            .map { it.trim().uppercase() }
+            .filter { it.isNotEmpty() }
+            .distinct()
+    if (excluded.isNotEmpty()) {
+        json.put("excludeCountries", org.json.JSONArray(excluded))
+    }
     // A pinned server wins over a country; the Go core still re-verifies it with L3.
     if (server.isNotBlank()) {
         json.put("server", server.trim())

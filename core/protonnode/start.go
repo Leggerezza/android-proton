@@ -61,6 +61,14 @@ type startConfig struct {
 	// MaxProbe is how many reachable entries to try before giving up on this
 	// round (default 3).
 	MaxProbe int `json:"maxProbe,omitempty"`
+	// Transport selects the outer transport: "stealth" (WireGuard in TLS/TCP,
+	// default) or "udp" (plain WireGuard, much faster where UDP is allowed).
+	Transport string `json:"transport,omitempty"`
+	// IPv6 adds Proton's fixed IPv6 address to the interface, so applications can
+	// reach IPv6 destinations (only on servers that advertise the IPv6 feature).
+	IPv6 bool `json:"ipv6,omitempty"`
+	// ExcludeCountries lists exit countries that must never be connected.
+	ExcludeCountries []string `json:"excludeCountries,omitempty"`
 	// ScanLevel is the verification depth used for automatic selection:
 	// 3 (default; PROMPT.md 5.5: only a real WireGuard handshake counts),
 	// 2 or 1 to trade correctness for speed.
@@ -122,6 +130,16 @@ func (c *startConfig) applyDefaults() error {
 	}
 	if c.MaxProbe <= 0 {
 		c.MaxProbe = 3
+	}
+	c.Transport = strings.ToLower(strings.TrimSpace(c.Transport))
+	if c.Transport == "" {
+		c.Transport = tunnel.TransportStealth
+	}
+	if c.Transport != tunnel.TransportStealth && c.Transport != tunnel.TransportUDP {
+		return fmt.Errorf("protonnode: unknown transport %q (stealth|udp)", c.Transport)
+	}
+	for i := range c.ExcludeCountries {
+		c.ExcludeCountries[i] = strings.ToUpper(strings.TrimSpace(c.ExcludeCountries[i]))
 	}
 	if c.ScanLevel == 0 {
 		c.ScanLevel = 3
@@ -352,6 +370,9 @@ func (e *engine) connectOnce(ctx context.Context, run *runState) error {
 		return errors.New("no server matches the configured filter")
 	}
 	port := stealthPort()
+	if run.cfg.Transport == tunnel.TransportUDP {
+		port = wireGuardUDPPort()
+	}
 	picks, err := e.pickCandidates(ctx, servers, candidates, run.cfg, port)
 	if err != nil {
 		return err
@@ -384,6 +405,10 @@ func (e *engine) connectOnce(ctx context.Context, run *runState) error {
 		e.logfOrNil("server %d/%d: %s (%s, %s) entry %s load %d%% secure-core=%v",
 			i+1, len(picks), cand.server.Name, cand.server.ExitCountry, cand.server.City,
 			cand.phys.EntryIP, cand.server.Load, cand.server.IsSecureCore())
+		// Proton only routes the fixed IPv6 /128 on servers that advertise the
+		// feature; on the others adding the address would make IPv6 dials hang
+		// instead of failing fast, so it is decided per server.
+		enableIPv6 := run.cfg.IPv6 && cand.server.IsIPv6Supported()
 		tun, terr := tunnel.New(tunnel.Config{
 			ServerIP:   cand.phys.EntryIP,
 			Port:       port,
@@ -392,6 +417,8 @@ func (e *engine) connectOnce(ctx context.Context, run *runState) error {
 			MTU:        run.cfg.MTU,
 			SNI:        run.cfg.SNI,
 			Hello:      hello,
+			Transport:  run.cfg.Transport,
+			EnableIPv6: enableIPv6,
 			Logf:       e.logfOrNil,
 		})
 		if terr != nil {
@@ -536,3 +563,20 @@ func (e *engine) teardown(run *runState) {
 // the only one the baseline ever observed; /vpn/v2/clientconfig can override
 // it and is consulted lazily in P3 (scanning) to keep P1's startup offline-safe.
 func stealthPort() int { return 443 }
+
+// wireGuardUDPPort is Proton's plain-WireGuard UDP port. 51820 is the standard
+// value and the fallback when /vpn/v2/clientconfig cannot be read.
+func wireGuardUDPPort() int {
+	eng.mu.Lock()
+	c := eng.client
+	eng.mu.Unlock()
+	if c == nil {
+		return 51820
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if p := c.WireGuardUDPPort(ctx); p > 0 {
+		return p
+	}
+	return 51820
+}

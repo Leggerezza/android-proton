@@ -17,6 +17,7 @@ import (
 	"time"
 
 	utls "github.com/refraction-networking/utls"
+	"golang.zx2c4.com/wireguard/conn"
 	"golang.zx2c4.com/wireguard/device"
 	tnetstack "golang.zx2c4.com/wireguard/tun/netstack"
 
@@ -29,9 +30,19 @@ const (
 	DefaultAddress = "10.2.0.2"
 	DefaultDNS     = "10.2.0.1"
 	DefaultMTU     = 1320
+
+	// Proton's fixed IPv6 client address and resolver, the same pair its own
+	// Android client uses (Constants.VPN_CLIENT_IP_V6 / VPN_SERVER_IP_V6). The
+	// server routes that /128 back into the tunnel; nothing is negotiated.
+	DefaultIPv6 = "2a07:b944::2:2"
+	DefaultDNS6 = "2a07:b944::2:1"
+	// TransportStealth is WireGuard framed inside TLS on TCP; TransportUDP is
+	// plain WireGuard on UDP (much faster where the network allows it).
+	TransportStealth = "stealth"
+	TransportUDP     = "udp"
 )
 
-// Config describes one Stealth tunnel.
+// Config describes one tunnel.
 type Config struct {
 	ServerIP   string
 	Port       int
@@ -39,9 +50,13 @@ type Config struct {
 	PrivateKey []byte // 32-byte X25519 private key
 	Address    string
 	DNS        string
+	IPv6       string // client IPv6 address, used when EnableIPv6
+	DNS6       string
+	EnableIPv6 bool
 	MTU        int
 	SNI        string
 	Hello      utls.ClientHelloID
+	Transport  string // "stealth" (default) or "udp"
 	Logf       func(format string, args ...any)
 }
 
@@ -50,7 +65,7 @@ type Tunnel struct {
 	cfg  Config
 	dev  *device.Device
 	net  *tnetstack.Net
-	bind *stealth.Bind
+	bind conn.Bind
 
 	dnsMu    sync.Mutex
 	dnsCache map[string]dnsEntry
@@ -71,7 +86,23 @@ func New(cfg Config) (*Tunnel, error) {
 		cfg.MTU = DefaultMTU
 	}
 	if cfg.Port == 0 {
-		cfg.Port = 443
+		if cfg.Transport == TransportUDP {
+			cfg.Port = 51820
+		} else {
+			cfg.Port = 443
+		}
+	}
+	if cfg.Transport == "" {
+		cfg.Transport = TransportStealth
+	}
+	if cfg.Transport != TransportStealth && cfg.Transport != TransportUDP {
+		return nil, fmt.Errorf("unknown transport %q (stealth|udp)", cfg.Transport)
+	}
+	if cfg.IPv6 == "" {
+		cfg.IPv6 = DefaultIPv6
+	}
+	if cfg.DNS6 == "" {
+		cfg.DNS6 = DefaultDNS6
 	}
 
 	serverKey, err := base64.StdEncoding.DecodeString(cfg.ServerKey)
@@ -90,32 +121,59 @@ func New(cfg Config) (*Tunnel, error) {
 	if err != nil {
 		return nil, fmt.Errorf("tunnel dns %q: %w", cfg.DNS, err)
 	}
+	// The interface carries both families when IPv6 is on, exactly like Proton's
+	// client: the IPv6 address is a fixed /128 the server routes back.
+	addrs := []netip.Addr{addr}
+	dnsAddrs := []netip.Addr{dns}
+	if cfg.EnableIPv6 {
+		addr6, err := netip.ParseAddr(cfg.IPv6)
+		if err != nil {
+			return nil, fmt.Errorf("tunnel ipv6 address %q: %w", cfg.IPv6, err)
+		}
+		dns6, err := netip.ParseAddr(cfg.DNS6)
+		if err != nil {
+			return nil, fmt.Errorf("tunnel ipv6 dns %q: %w", cfg.DNS6, err)
+		}
+		addrs = append(addrs, addr6)
+		dnsAddrs = append(dnsAddrs, dns6)
+	}
 
-	tunDev, tnet, err := tnetstack.CreateNetTUN([]netip.Addr{addr}, []netip.Addr{dns}, cfg.MTU)
+	tunDev, tnet, err := tnetstack.CreateNetTUN(addrs, dnsAddrs, cfg.MTU)
 	if err != nil {
 		return nil, fmt.Errorf("create netstack: %w", err)
 	}
 
-	bind, err := stealth.NewBind(stealth.Config{
-		ServerIP:   cfg.ServerIP,
-		Port:       cfg.Port,
-		ServerName: cfg.SNI,
-		Hello:      cfg.Hello,
-		Logf:       cfg.Logf,
-	})
-	if err != nil {
-		_ = tunDev.Close()
-		return nil, err
+	var bind conn.Bind
+	if cfg.Transport == TransportUDP {
+		bind = conn.NewDefaultBind()
+		cfg.Logf("tunnel: plain WireGuard over UDP to %s:%d", cfg.ServerIP, cfg.Port)
+	} else {
+		stealthBind, err := stealth.NewBind(stealth.Config{
+			ServerIP:   cfg.ServerIP,
+			Port:       cfg.Port,
+			ServerName: cfg.SNI,
+			Hello:      cfg.Hello,
+			Logf:       cfg.Logf,
+		})
+		if err != nil {
+			_ = tunDev.Close()
+			return nil, err
+		}
+		bind = stealthBind
 	}
 
 	logger := device.NewLogger(device.LogLevelError, "wg: ")
 	dev := device.NewDevice(tunDev, bind, logger)
 
+	allowed := "allowed_ip=0.0.0.0/0\n"
+	if cfg.EnableIPv6 {
+		allowed += "allowed_ip=::/0\n"
+	}
 	ipc := fmt.Sprintf(
-		"private_key=%s\npublic_key=%s\nendpoint=%s:%d\nallowed_ip=0.0.0.0/0\npersistent_keepalive_interval=25\n",
+		"private_key=%s\npublic_key=%s\nendpoint=%s:%d\n%s\npersistent_keepalive_interval=25\n",
 		hex.EncodeToString(cfg.PrivateKey),
 		hex.EncodeToString(serverKey),
-		cfg.ServerIP, cfg.Port,
+		cfg.ServerIP, cfg.Port, strings.TrimSuffix(allowed, "\n"),
 	)
 	if err := dev.IpcSet(ipc); err != nil {
 		dev.Close()
@@ -125,8 +183,8 @@ func New(cfg Config) (*Tunnel, error) {
 	return &Tunnel{cfg: cfg, dev: dev, net: tnet, bind: bind}, nil
 }
 
-// ServerName returns the SNI used for the handshake.
-func (t *Tunnel) ServerName() string { return t.bind.ServerName() }
+// ServerName returns the SNI used for the handshake (empty for UDP).
+func (t *Tunnel) ServerName() string { return t.cfg.SNI }
 
 // Start brings the device up and waits for the WireGuard handshake.
 func (t *Tunnel) Start(ctx context.Context, timeout time.Duration) error {

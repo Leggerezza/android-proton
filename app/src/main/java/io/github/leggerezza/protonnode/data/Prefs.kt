@@ -47,6 +47,26 @@ class Prefs(
         get() = prefs.getString(KEY_PREF_COUNTRY, "") ?: ""
         set(value) = prefs.edit().putString(KEY_PREF_COUNTRY, value).apply()
 
+    /** Outer transport: "stealth" (WireGuard in TLS/TCP) or "udp" (plain WireGuard). */
+    var transport: String
+        get() = prefs.getString(KEY_TRANSPORT, "stealth") ?: "stealth"
+        set(value) = prefs.edit().putString(KEY_TRANSPORT, value).apply()
+
+    /** Add Proton's fixed IPv6 address to the interface (needs an IPv6 server). */
+    var ipv6: Boolean
+        get() = prefs.getBoolean(KEY_IPV6, false)
+        set(value) = prefs.edit().putBoolean(KEY_IPV6, value).apply()
+
+    /** Exit countries that must never be connected, comma separated ISO codes. */
+    var excludedCountries: String
+        get() = prefs.getString(KEY_EXCLUDED, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_EXCLUDED, value).apply()
+
+    /** True once the first-run third-party notice has been acknowledged. */
+    var disclaimerAccepted: Boolean
+        get() = prefs.getBoolean(KEY_DISCLAIMER, false)
+        set(value) = prefs.edit().putBoolean(KEY_DISCLAIMER, value).apply()
+
     /** Tunnel MTU (default 1320; 1200 is gentler on a TCP carrier). */
     var mtu: Int
         get() = prefs.getInt(KEY_MTU, 1320)
@@ -71,6 +91,10 @@ class Prefs(
 
     companion object {
         private const val KEY_MTU = "mtu"
+        private const val KEY_TRANSPORT = "transport"
+        private const val KEY_IPV6 = "ipv6"
+        private const val KEY_EXCLUDED = "excludedCountries"
+        private const val KEY_DISCLAIMER = "disclaimerAccepted"
 
         /** Game mode by default: the honest choice for the target device (PROMPT.md 7). */
         const val DEFAULT_CONFIG = "{\"mode\":\"game\",\"socksPort\":1080}"
