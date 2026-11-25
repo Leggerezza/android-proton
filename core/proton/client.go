@@ -247,6 +247,18 @@ func (c *Client) do(ctx context.Context, method, url string, body, out any, auth
 		}
 		return err
 	}
+	// A transport-level failure on the primary host is retried once on Proton's
+	// canonical host: some networks (a campus firewall, an ISP) break one host
+	// while the other still answers.
+	if err != nil {
+		if _, isAPI := err.(*APIError); !isAPI && strings.HasPrefix(url, VPNBase) {
+			alt := AltVPNBase + strings.TrimPrefix(url, VPNBase)
+			c.Logf("retrying %s on the alternate host", alt)
+			if aerr := c.doOnce(ctx, method, alt, body, out, auth); aerr == nil {
+				return nil
+			}
+		}
+	}
 	return err
 }
 

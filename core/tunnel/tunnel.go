@@ -69,6 +69,7 @@ type Tunnel struct {
 
 	dnsMu    sync.Mutex
 	dnsCache map[string]dnsEntry
+	sniUsed  string
 }
 
 // New creates the device and configures the single peer (0.0.0.0/0).
@@ -160,6 +161,7 @@ func New(cfg Config) (*Tunnel, error) {
 			return nil, err
 		}
 		bind = stealthBind
+		cfg.Logf("tunnel: stealth bind, sni rotates per connection")
 	}
 
 	logger := device.NewLogger(device.LogLevelError, "wg: ")
@@ -180,11 +182,23 @@ func New(cfg Config) (*Tunnel, error) {
 		return nil, fmt.Errorf("configure wireguard device: %w", err)
 	}
 
-	return &Tunnel{cfg: cfg, dev: dev, net: tnet, bind: bind}, nil
+	tun := &Tunnel{cfg: cfg, dev: dev, net: tnet, bind: bind}
+	if b, ok := bind.(*stealth.Bind); ok {
+		tun.sniUsed = b.ServerName()
+	} else {
+		tun.sniUsed = "udp"
+	}
+	return tun, nil
 }
 
-// ServerName returns the SNI used for the handshake (empty for UDP).
-func (t *Tunnel) ServerName() string { return t.cfg.SNI }
+// ServerName returns the SNI used for the stealth handshake ("udp" for the
+// plain WireGuard transport), for the status line.
+func (t *Tunnel) ServerName() string {
+	if t.sniUsed != "" {
+		return t.sniUsed
+	}
+	return t.cfg.SNI
+}
 
 // Start brings the device up and waits for the WireGuard handshake.
 func (t *Tunnel) Start(ctx context.Context, timeout time.Duration) error {

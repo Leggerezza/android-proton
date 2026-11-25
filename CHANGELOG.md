@@ -2,6 +2,13 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/), generated with git-cliff.
 
+## 0.1.4 — 2026-11-25
+
+- Diagnostics from a real flaky network (a log showed the API returning EOF while every L2
+  TLS handshake failed, then recovering): the scan summary now names the failure classes
+  (`l2 0/24 tls ok (eof 24)`), transport errors on the primary API host fall back once to
+  vpn-api.proton.me, and the status line shows the SNI that was actually used again.
+
 ## 0.1.3 — 2026-11-22
 
 - **WireGuard/UDP transport**: settings can switch the outer transport between Stealth

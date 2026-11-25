@@ -19,6 +19,7 @@ import (
 	"net"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -387,14 +388,22 @@ func (r *Runner) run(ctx context.Context) {
 		l2Input = l2Input[:r.opts.MaxL2]
 	}
 	r.resetCounters(len(l2Input))
+	l2Failures := map[string]int{}
+	var l2FailMu sync.Mutex
 	l2, l2err := r.sweep(ctx, l2Input, func(ctx context.Context, t Target) (Result, error) {
-		return probeTLS(ctx, t, r.opts.L2Timeout, r.opts.Hello, r.opts.Logf)
+		res, err := probeTLS(ctx, t, r.opts.L2Timeout, r.opts.Hello, r.opts.Logf)
+		if err != nil {
+			l2FailMu.Lock()
+			l2Failures[classifyError(err)]++
+			l2FailMu.Unlock()
+		}
+		return res, err
 	})
 	if ctx.Err() != nil {
 		r.finish(StateCancelled, nil)
 		return
 	}
-	r.opts.Logf("scan %s: l2 %d/%d tls ok", r.id, len(l2), len(l2Input))
+	r.opts.Logf("scan %s: l2 %d/%d tls ok (%s)", r.id, len(l2), len(l2Input), failureSummary(l2Failures))
 	if r.opts.Level <= LevelTLS {
 		r.complete(l2, l2err, l1err)
 		return
@@ -617,4 +626,52 @@ func targetsOf(results []Result) []Target {
 
 func sortByQualityR(list []Result) {
 	sort.SliceStable(list, func(i, j int) bool { return list[i].RTTMs < list[j].RTTMs })
+}
+
+// classifyError reduces a probe error to a short class for the scan summary.
+// It never includes the destination, only the failure kind.
+func classifyError(err error) string {
+	msg := strings.ToLower(err.Error())
+	switch {
+	case strings.Contains(msg, "timeout"), strings.Contains(msg, "deadline"):
+		return "timeout"
+	case strings.Contains(msg, "eof"):
+		return "eof"
+	case strings.Contains(msg, "reset"):
+		return "reset"
+	case strings.Contains(msg, "refused"):
+		return "refused"
+	case strings.Contains(msg, "unreachable"), strings.Contains(msg, "no route"):
+		return "unreachable"
+	case strings.Contains(msg, "certificate"), strings.Contains(msg, "handshake"):
+		return "handshake"
+	default:
+		return "error"
+	}
+}
+
+// failureSummary renders the failure classes, most frequent first.
+func failureSummary(counts map[string]int) string {
+	if len(counts) == 0 {
+		return "no failures"
+	}
+	type kv struct {
+		k string
+		v int
+	}
+	list := make([]kv, 0, len(counts))
+	for k, v := range counts {
+		list = append(list, kv{k, v})
+	}
+	sort.Slice(list, func(i, j int) bool {
+		if list[i].v != list[j].v {
+			return list[i].v > list[j].v
+		}
+		return list[i].k < list[j].k
+	})
+	parts := make([]string, 0, len(list))
+	for _, e := range list {
+		parts = append(parts, fmt.Sprintf("%s %d", e.k, e.v))
+	}
+	return strings.Join(parts, ", ")
 }
