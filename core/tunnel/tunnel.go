@@ -304,7 +304,20 @@ func (t *Tunnel) ResolveHost(ctx context.Context, host string) ([]netip.Addr, er
 
 	addrs, err := t.net.LookupContextHost(ctx, host)
 	if err != nil {
-		return nil, fmt.Errorf("tunnel: resolve %q: %w", host, err)
+		// A single dropped query inside the tunnel shows up as a failed CONNECT
+		// for every app that was waiting on it. Retry once unless the answer was
+		// a real "no such host".
+		if !strings.Contains(strings.ToLower(err.Error()), "no such host") {
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(150 * time.Millisecond):
+			}
+			addrs, err = t.net.LookupContextHost(ctx, host)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("tunnel: resolve %q: %w", host, err)
+		}
 	}
 	out := make([]netip.Addr, 0, len(addrs))
 	for _, a := range addrs {

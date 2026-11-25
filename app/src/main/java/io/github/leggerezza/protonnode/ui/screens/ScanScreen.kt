@@ -4,9 +4,11 @@ package io.github.leggerezza.protonnode.ui.screens
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
@@ -53,7 +55,10 @@ fun parseScanResults(json: String): List<ScanRow> =
     }.getOrDefault(emptyList())
 
 @Composable
-fun ScanScreen(vm: NodeViewModel) {
+fun ScanScreen(
+    vm: NodeViewModel,
+    onUseServer: (name: String, country: String) -> Unit,
+) {
     val progress by vm.scanProgress.collectAsStateWithLifecycle()
     val resultsJson by vm.scanResults.collectAsStateWithLifecycle()
     var scope by remember { mutableStateOf("all") }
@@ -120,10 +125,16 @@ fun ScanScreen(vm: NodeViewModel) {
             if (rows.isEmpty()) {
                 Text(stringResource(R.string.scan_no_results), style = MaterialTheme.typography.bodyMedium)
             } else {
+                Text(
+                    stringResource(R.string.scan_use_hint),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 rows.forEach { row ->
                     Row(
                         Modifier.fillMaxWidth().padding(vertical = 8.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
                     ) {
                         Column {
                             Text(row.server, style = MaterialTheme.typography.titleSmall)
@@ -134,7 +145,14 @@ fun ScanScreen(vm: NodeViewModel) {
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                        Text(row.rttMs.toString() + " ms", style = MaterialTheme.typography.bodySmall)
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            Text(row.rttMs.toString() + " ms", style = MaterialTheme.typography.bodySmall)
+                            androidx.compose.foundation.layout
+                                .Spacer(Modifier.width(12.dp))
+                            OutlinedButton(onClick = { onUseServer(row.server, row.country) }) {
+                                Text(stringResource(R.string.scan_use))
+                            }
+                        }
                     }
                     HorizontalDivider()
                 }

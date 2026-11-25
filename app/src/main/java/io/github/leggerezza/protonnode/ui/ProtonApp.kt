@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.leggerezza.protonnode.ui
 
-import android.app.Activity
-import android.view.WindowManager
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,7 +24,7 @@ import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,8 +32,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.leggerezza.protonnode.R
 import io.github.leggerezza.protonnode.ui.screens.DisclaimerDialog
@@ -75,20 +79,22 @@ fun ProtonApp(vm: NodeViewModel) {
     var dest by remember { mutableStateOf(Dest.HOME) }
     val wide = Layout.widthClass(LocalConfiguration.current.screenWidthDp) > 0
 
-    // The logs screen must not appear in screenshots or the recents thumbnail
-    // (PROMPT.md 6.3). The flag is scoped to that destination only.
-    val view = LocalView.current
-    DisposableEffect(dest) {
-        val window = (view.context as? Activity)?.window
-        if (dest == Dest.LOGS) {
-            window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-        } else {
-            window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
-        }
-        onDispose { }
-    }
-
     val disclaimerAccepted by vm.disclaimerAccepted.collectAsStateWithLifecycle()
+
+    // Android 13+ hides notifications (including this app's foreground service
+    // notification) until the user grants POST_NOTIFICATIONS. Ask once the notice
+    // is out of the way, so a dropped tunnel is actually visible.
+    val appContext = LocalContext.current
+    val notificationPermission =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    LaunchedEffect(disclaimerAccepted) {
+        if (!disclaimerAccepted) return@LaunchedEffect
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return@LaunchedEffect
+        val granted =
+            ContextCompat.checkSelfPermission(appContext, Manifest.permission.POST_NOTIFICATIONS) ==
+                PackageManager.PERMISSION_GRANTED
+        if (!granted) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
     if (!disclaimerAccepted) {
         DisclaimerDialog(onAccept = { vm.acceptDisclaimer() })
     }
@@ -130,7 +136,15 @@ fun ProtonApp(vm: NodeViewModel) {
                                 Layout.widthClass(LocalConfiguration.current.screenWidthDp) == 2,
                         )
                     Dest.SERVERS -> ServersScreen(vm)
-                    Dest.SCAN -> ScanScreen(vm)
+                    Dest.SCAN ->
+                        ScanScreen(
+                            vm = vm,
+                            onUseServer = { name, country ->
+                                vm.selectServer(name, country)
+                                vm.connect()
+                                dest = Dest.HOME
+                            },
+                        )
                     Dest.SETTINGS -> SettingsScreen(vm)
                     Dest.LOGS -> LogsScreen(vm)
                 }

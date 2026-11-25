@@ -70,6 +70,13 @@ type Server struct {
 	// UDPMaxSessions caps the dst -> socket map per association (default 64).
 	UDPMaxSessions int
 
+	// Failure log aggregation: the same failure class is printed once per second
+	// and the next line carries the number folded into it.
+	failMu         sync.Mutex
+	lastFailKey    string
+	lastFailAt     time.Time
+	failSuppressed int
+
 	limiter chan struct{}
 }
 
@@ -183,7 +190,7 @@ func (s *Server) handle(ctx context.Context, c net.Conn) {
 		// default). The class is what tells an IPv6 target (no route) apart from a
 		// DNS failure, which look identical as "rep 0x4".
 		rep := replyForError(err)
-		s.Logf("socks5: CONNECT failed (rep %#x, %s, %s)", rep, addressFamily(target), errorClass(err))
+		s.logConnectFailure(rep, target, err)
 		_ = writeReply(c, rep, nil)
 		return
 	}
@@ -382,4 +389,29 @@ func errorClass(err error) string {
 	default:
 		return "error"
 	}
+}
+
+// logConnectFailure keeps the per-connection failure line useful without letting
+// a client that opens hundreds of doomed connections flood the ring log: the
+// same (reply, family, class) triple is printed at most once per second, and the
+// next line reports how many were folded into it.
+func (s *Server) logConnectFailure(rep byte, target string, err error) {
+	key := fmt.Sprintf("%#x/%s/%s", rep, addressFamily(target), errorClass(err))
+	s.failMu.Lock()
+	now := time.Now()
+	if key == s.lastFailKey && now.Sub(s.lastFailAt) < time.Second {
+		s.failSuppressed++
+		s.failMu.Unlock()
+		return
+	}
+	suppressed := s.failSuppressed
+	s.lastFailKey = key
+	s.lastFailAt = now
+	s.failSuppressed = 0
+	s.failMu.Unlock()
+	if suppressed > 0 {
+		s.Logf("socks5: CONNECT failed (rep %#x, %s, %s) x%d", rep, addressFamily(target), errorClass(err), suppressed+1)
+		return
+	}
+	s.Logf("socks5: CONNECT failed (rep %#x, %s, %s)", rep, addressFamily(target), errorClass(err))
 }

@@ -16,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -71,7 +72,9 @@ fun HomeScreen(
         StatusCard(status)
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             if (status.isRunning) {
-                Button(onClick = { vm.disconnect() }) {
+                // Disconnecting is a destructive secondary action: a filled primary
+                // button made it look like the thing to press.
+                OutlinedButton(onClick = { vm.disconnect() }) {
                     Text(stringResource(R.string.action_disconnect))
                 }
             } else {

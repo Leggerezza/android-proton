@@ -2,6 +2,21 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/), generated with git-cliff.
 
+## 0.1.5 — 2026-11-25
+
+- **Reconnect**: a tunnel that had been up now retries immediately with the entries that just
+  worked, and only repeated failures back off (2s, 5s, 15s, 30s, 60s). The health check runs
+  every 15s, so a dead tunnel is noticed within 30s instead of a minute.
+- **Notifications**: POST_NOTIFICATIONS is requested once the first-run notice is accepted, and
+  Settings shows whether notifications are allowed with a shortcut to the system page.
+- **Logs**: every line carries INFO/WARN/ERROR (derived from what it says), the list opens at
+  the newest line, levels can be filtered, and the export button hands the redacted text to any
+  app. The FLAG_SECURE screenshot block is gone.
+- **Scan**: each verified entry has a "Use" action that pins that server and connects.
+- **DNS**: a failed in-tunnel lookup is retried once; identical CONNECT failures are folded into
+  one log line per second instead of flooding the ring log.
+- Home: Disconnect is an outlined button (it was styled as the primary action).
+
 ## 0.1.4 — 2026-11-25
 
 - Diagnostics from a real flaky network (a log showed the API returning EOF while every L2

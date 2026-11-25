@@ -77,7 +77,7 @@
     <string name="logs_refresh">Refresh</string>
     <string name="logs_copy">Copy</string>
     <string name="logs_empty">No log lines yet.</string>
-    <string name="logs_secure_note">This screen is excluded from screenshots.</string>
+    <string name="logs_secure_note">Tokens and passwords are redacted before a line reaches this screen.</string>
 
     <string name="dialog_cancel">Cancel</string>
     <string name="dialog_ok">OK</string>
@@ -138,4 +138,11 @@
     <string name="disclaimer_continue_in">Continue (%1$d)</string>
     <string name="home_transport">Transport</string>
     <string name="home_ipv6">IPv6</string>
+    <string name="logs_export">Export</string>
+    <string name="logs_filter_all">All</string>
+    <string name="scan_use">Use</string>
+    <string name="scan_use_hint">Pick a verified entry to pin it and connect.</string>
+    <string name="settings_notifications_on">Notifications: allowed (drops are reported)</string>
+    <string name="settings_notifications_off">Notifications: blocked (a drop is invisible)</string>
+    <string name="settings_notifications_enable">Allow</string>
 </resources>

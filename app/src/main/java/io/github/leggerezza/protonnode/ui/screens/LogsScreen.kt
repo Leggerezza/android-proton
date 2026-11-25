@@ -4,6 +4,7 @@ package io.github.leggerezza.protonnode.ui.screens
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,15 +13,20 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -28,6 +34,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.leggerezza.protonnode.R
+import io.github.leggerezza.protonnode.core.LogLevel
+import io.github.leggerezza.protonnode.core.classifyLogLine
 import io.github.leggerezza.protonnode.ui.NodeViewModel
 
 @Composable
@@ -37,6 +45,23 @@ fun LogsScreen(vm: NodeViewModel) {
 
     LaunchedEffect(Unit) { vm.loadLogs() }
 
+    val allLines = remember(logs) { logs.split("\n").filter { it.isNotBlank() } }
+    var filter by remember { mutableStateOf<LogLevel?>(null) }
+    val lines =
+        remember(allLines, filter) {
+            if (filter == null) allLines else allLines.filter { classifyLogLine(it) == filter }
+        }
+    val counts =
+        remember(allLines) {
+            LogLevel.entries.associateWith { level -> allLines.count { classifyLogLine(it) == level } }
+        }
+
+    // The newest line is the interesting one: open at the bottom and follow it.
+    val listState = rememberLazyListState()
+    LaunchedEffect(lines.size) {
+        if (lines.isNotEmpty()) listState.scrollToItem(lines.lastIndex)
+    }
+
     Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Button(onClick = { vm.loadLogs() }) { Text(stringResource(R.string.logs_refresh)) }
@@ -44,27 +69,69 @@ fun LogsScreen(vm: NodeViewModel) {
                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 clipboard.setPrimaryClip(ClipData.newPlainText("proton logs", logs))
             }) { Text(stringResource(R.string.logs_copy)) }
+            OutlinedButton(onClick = {
+                // Export = hand the (already redacted) text to any app that can
+                // store or send it: no file provider, no extra permission.
+                val send =
+                    Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_SUBJECT, "proton-node logs")
+                        putExtra(Intent.EXTRA_TEXT, logs)
+                    }
+                context.startActivity(Intent.createChooser(send, null))
+            }) { Text(stringResource(R.string.logs_export)) }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(
+                selected = filter == null,
+                onClick = { filter = null },
+                label = { Text(stringResource(R.string.logs_filter_all) + " " + allLines.size) },
+            )
+            LogLevel.entries.forEach { level ->
+                FilterChip(
+                    selected = filter == level,
+                    onClick = { filter = if (filter == level) null else level },
+                    label = { Text(level.label + " " + (counts[level] ?: 0)) },
+                )
+            }
         }
         Text(
             stringResource(R.string.logs_secure_note),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        val lines = remember(logs) { logs.split("\n").filter { it.isNotBlank() } }
         if (lines.isEmpty()) {
             Text(stringResource(R.string.logs_empty), style = MaterialTheme.typography.bodyMedium)
         } else {
-            LazyColumn(Modifier.fillMaxWidth()) {
+            LazyColumn(Modifier.fillMaxWidth(), state = listState) {
                 items(lines) { line ->
-                    Text(
-                        line,
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 12.sp,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(vertical = 1.dp),
-                    )
+                    val level = classifyLogLine(line)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            level.label,
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp,
+                            color = levelColor(level),
+                            modifier = Modifier.padding(top = 1.dp),
+                        )
+                        Text(
+                            line,
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 12.sp,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(vertical = 1.dp),
+                        )
+                    }
                 }
             }
         }
     }
 }
+
+@Composable
+private fun levelColor(level: LogLevel): Color =
+    when (level) {
+        LogLevel.ERROR -> MaterialTheme.colorScheme.error
+        LogLevel.WARN -> MaterialTheme.colorScheme.tertiary
+        LogLevel.INFO -> MaterialTheme.colorScheme.onSurfaceVariant
+    }

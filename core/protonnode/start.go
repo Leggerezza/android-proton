@@ -16,12 +16,12 @@ import (
 	"github.com/leggerezza/android-proton/core/tunnel"
 )
 
-// Timing constants. The reconnect delay and the health-check cadence come from
-// the Windows baseline (which was validated against real Proton servers), and
-// PROMPT.md 2 keeps the same numbers ("30s probe x2 -> reconnect").
+// Timing constants. A dropped tunnel is retried immediately with the entries
+// that just worked; only repeated failures back off (2s, 5s, 15s, 30s, 60s).
+// The health check runs every 15s, so two misses are caught within 30s instead
+// of a minute.
 const (
-	reconnectDelay      = 60 * time.Second
-	healthCheckInterval = 30 * time.Second
+	healthCheckInterval = 15 * time.Second
 	// gameLockRounds is how many consecutive failures to the SAME entry are
 	// retried before switching servers while gameLock is on (PROMPT.md 7:
 	// switching servers kills every game session, so it is the last resort).
@@ -295,6 +295,9 @@ func (e *engine) supervise(ctx context.Context, run *runState) {
 	defer close(run.done)
 	attempt := 0
 	sameServerFailures := 0
+	// reconnectBackoff is indexed by consecutive failures; index 0 means "retry
+	// right away", which is what happens after a tunnel that had been up drops.
+	reconnectBackoff := []time.Duration{0, 2 * time.Second, 5 * time.Second, 15 * time.Second, 30 * time.Second, 60 * time.Second}
 	lockedServer := run.cfg.Server
 	for {
 		if ctx.Err() != nil {
@@ -303,10 +306,19 @@ func (e *engine) supervise(ctx context.Context, run *runState) {
 		}
 		if attempt > 0 {
 			e.setState(stateReconnecting)
-			e.logfOrNil("reconnect: attempt %d in %s", attempt+1, reconnectDelay)
-			if !sleepCtx(ctx, reconnectDelay) {
-				e.setState(stateIdle)
-				return
+			idx := attempt
+			if idx >= len(reconnectBackoff) {
+				idx = len(reconnectBackoff) - 1
+			}
+			wait := reconnectBackoff[idx]
+			if wait > 0 {
+				e.logfOrNil("reconnect: attempt %d in %s", attempt+1, wait)
+				if !sleepCtx(ctx, wait) {
+					e.setState(stateIdle)
+					return
+				}
+			} else {
+				e.logfOrNil("reconnect: attempt %d immediately", attempt+1)
 			}
 		}
 		attempt++
@@ -348,6 +360,9 @@ func (e *engine) supervise(ctx context.Context, run *runState) {
 			e.setState(stateIdle)
 			return
 		}
+		// The tunnel had been up, so the next attempt reconnects right away with
+		// the last verified entries instead of waiting out a backoff.
+		attempt = 0
 	}
 }
 
