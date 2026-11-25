@@ -90,6 +90,7 @@ fun ServersScreen(vm: NodeViewModel) {
     var gameOnly by remember(mode) { mutableStateOf(false) }
     var featureFilter by remember { mutableStateOf("") }
     var byLatency by remember { mutableStateOf(false) }
+    var groupByCountry by remember { mutableStateOf(false) }
     val status by vm.status.collectAsStateWithLifecycle()
     val currentServer = status.server
 
@@ -204,55 +205,134 @@ fun ServersScreen(vm: NodeViewModel) {
                 Text(stringResource(R.string.servers_empty), style = MaterialTheme.typography.bodyMedium)
             } else {
                 Text(filtered.size.toString() + " / " + all.size, style = MaterialTheme.typography.labelMedium)
-                LazyColumn(Modifier.fillMaxWidth()) {
-                    items(filtered, key = { it.name }) { row ->
-                        val selected = pinnedServer == row.name
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .background(
-                                    if (selected) {
-                                        MaterialTheme.colorScheme.secondaryContainer
-                                    } else {
-                                        MaterialTheme.colorScheme.surface
-                                    },
-                                ).clickable { vm.selectServer(row.name, row.country) }
-                                .padding(horizontal = 8.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(Modifier.weight(1f)) {
-                                Text(row.name, style = MaterialTheme.typography.titleSmall)
-                                val badges =
-                                    buildList {
-                                        if (row.secureCore) add("Secure Core")
-                                        if (row.tor) add("Tor")
-                                        if (row.p2p) add("P2P")
-                                        if (row.streaming) add("Streaming")
-                                        if (row.ipv6) add("IPv6")
-                                    }
-                                Text(
-                                    row.country +
-                                        (if (row.name == currentServer) " · Current" else "") +
-                                        (if (badges.isNotEmpty()) " · " + badges.joinToString(" · ") else "") +
-                                        (if (row.entryIP.isNotEmpty()) " · " + row.entryIP else "") +
-                                        " · " + (if (row.rttMs > 0) row.rttMs.toString() + " ms" else "—"),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
+                if (groupByCountry) {
+                    CountryList(filtered, onPick = { vm.selectCountry(it) })
+                } else {
+                    LazyColumn(Modifier.fillMaxWidth()) {
+                        items(filtered, key = { it.name }) { row ->
+                            val selected = pinnedServer == row.name
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .background(
+                                        if (selected) {
+                                            MaterialTheme.colorScheme.secondaryContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.surface
+                                        },
+                                    ).clickable { vm.selectServer(row.name, row.country) }
+                                    .padding(horizontal = 8.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(row.name, style = MaterialTheme.typography.titleSmall)
+                                    val badges =
+                                        buildList {
+                                            if (row.secureCore) add("Secure Core")
+                                            if (row.tor) add("Tor")
+                                            if (row.p2p) add("P2P")
+                                            if (row.streaming) add("Streaming")
+                                            if (row.ipv6) add("IPv6")
+                                        }
+                                    Text(
+                                        row.country +
+                                            (if (row.name == currentServer) " · Current" else "") +
+                                            (if (badges.isNotEmpty()) " · " + badges.joinToString(" · ") else "") +
+                                            (if (row.entryIP.isNotEmpty()) " · " + row.entryIP else "") +
+                                            " · " + (if (row.rttMs > 0) row.rttMs.toString() + " ms" else "—"),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                                if (selected) {
+                                    Icon(
+                                        Icons.Filled.Check,
+                                        contentDescription = null,
+                                        modifier = Modifier.padding(end = 8.dp),
+                                    )
+                                }
+                                Text(row.load.toString() + "%", style = MaterialTheme.typography.bodySmall)
                             }
-                            if (selected) {
-                                Icon(
-                                    Icons.Filled.Check,
-                                    contentDescription = null,
-                                    modifier = Modifier.padding(end = 8.dp),
-                                )
-                            }
-                            Text(row.load.toString() + "%", style = MaterialTheme.typography.bodySmall)
+                            HorizontalDivider()
                         }
-                        HorizontalDivider()
                     }
                 }
             }
         }
     }
 }
+
+/** ISO-3166 alpha-2 to a flag emoji (regional indicator pair). */
+fun flagEmoji(code: String): String {
+    val upper = code.trim().uppercase()
+    if (upper.length != 2 || upper.any { it !in 'A'..'Z' }) return ""
+    return upper.map { Char(0x1F1E6 + (it - 'A')) }.joinToString("")
+}
+
+/**
+ * Country view: one row per exit country, ranked by the fastest measured entry.
+ *
+ * A country whose servers were never verified shows "not measured" instead of a
+ * number - a blank latency said nothing about whether the entry was skipped,
+ * probed and timed out, or simply never reached.
+ */
+@Composable
+private fun CountryList(
+    rows: List<ServerRow>,
+    onPick: (String) -> Unit,
+) {
+    val ordered =
+        remember(rows) {
+            rows
+                .groupBy { it.country }
+                .mapValues { (_, list) ->
+                    val measured = list.mapNotNull { it.rttMs.takeIf { ms -> ms > 0 } }
+                    CountryAgg(list.size, measured.minOrNull() ?: 0L)
+                }.toList()
+                .sortedWith(
+                    compareBy({ if (it.second.minRttMs > 0) 0 else 1 }, { it.second.minRttMs }, { -it.second.count }),
+                )
+        }
+    LazyColumn(Modifier.fillMaxWidth()) {
+        items(ordered, key = { it.first }) { (code, agg) ->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable { onPick(code) }
+                    .padding(horizontal = 8.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(flagEmoji(code) + "  " + countryName(code), style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        code + " · " + agg.count + " servers",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Text(
+                    if (agg.minRttMs >
+                        0
+                    ) {
+                        agg.minRttMs.toString() + " ms"
+                    } else {
+                        stringResource(R.string.servers_not_measured)
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color =
+                        if (agg.minRttMs > 0) {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        } else {
+                            MaterialTheme.colorScheme.outline
+                        },
+                )
+            }
+            HorizontalDivider()
+        }
+    }
+}
+
+private data class CountryAgg(
+    val count: Int,
+    val minRttMs: Long,
+)

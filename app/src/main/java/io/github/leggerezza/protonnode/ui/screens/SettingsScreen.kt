@@ -111,205 +111,8 @@ fun SettingsScreen(vm: NodeViewModel) {
         Column(Modifier.widthIn(max = 720.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.headlineSmall)
 
-            Section(stringResource(R.string.settings_appearance))
-            Text(stringResource(R.string.settings_theme), style = MaterialTheme.typography.labelLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(
-                    "system" to R.string.settings_theme_system,
-                    "light" to R.string.settings_theme_light,
-                    "dark" to R.string.settings_theme_dark,
-                ).forEach { (value, label) ->
-                    FilterChip(
-                        selected = themeMode == value,
-                        onClick = { vm.setThemeMode(value) },
-                        label = { Text(stringResource(label)) },
-                    )
-                }
-            }
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.settings_dynamic), Modifier.weight(1f))
-                Switch(checked = dynamic, onCheckedChange = { vm.setDynamicColor(it) })
-            }
-
-            Text(stringResource(R.string.settings_language), style = MaterialTheme.typography.labelLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(selected = currentLanguage().isEmpty(), onClick = {
-                    setLanguage("")
-                }, label = { Text(stringResource(R.string.settings_language_system)) })
-                FilterChip(
-                    selected = currentLanguage() == "en",
-                    onClick = { setLanguage("en") },
-                    label = { Text("English") },
-                )
-                FilterChip(
-                    selected = currentLanguage() == "zh",
-                    onClick = { setLanguage("zh") },
-                    label = { Text("简体中文") },
-                )
-            }
-
-            HorizontalDivider()
-            Section(stringResource(R.string.settings_behavior))
-            Text(stringResource(R.string.settings_mode), style = MaterialTheme.typography.labelLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(selected = mode == "normal", onClick = {
-                    vm.setMode("normal")
-                }, label = { Text(stringResource(R.string.servers_mode_normal)) })
-                FilterChip(selected = mode == "game", onClick = {
-                    vm.setMode("game")
-                }, label = { Text(stringResource(R.string.servers_mode_game)) })
-            }
-            OutlinedTextField(
-                value = countryText,
-                onValueChange = { countryText = it },
-                label = { Text(stringResource(R.string.settings_default_country)) },
-                supportingText = {
-                    Text(
-                        if (countryError) {
-                            stringResource(R.string.settings_default_country_invalid)
-                        } else {
-                            stringResource(R.string.settings_default_country_hint)
-                        },
-                    )
-                },
-                isError = countryError,
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                // The saved value is shown through a composed string, not getString().
-                Button(onClick = {
-                    val ok = vm.setCountryCode(countryText)
-                    countryError = !ok
-                    savedCountry = if (ok) countryText.trim().uppercase() else ""
-                }) { Text(stringResource(R.string.dialog_ok)) }
-                OutlinedButton(onClick = {
-                    countryText = ""
-                    countryError = false
-                    vm.setCountryCode("")
-                }) { Text(stringResource(R.string.servers_auto)) }
-            }
-            if (savedCountry.isNotEmpty()) {
-                Text(
-                    stringResource(R.string.settings_default_country_saved, savedCountry),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-            val mtuValue by vm.mtu.collectAsStateWithLifecycle()
-            Text(stringResource(R.string.settings_mtu), style = MaterialTheme.typography.labelLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(1200, 1320, 1420).forEach { value ->
-                    FilterChip(
-                        selected = mtuValue == value,
-                        onClick = { vm.setMtu(value) },
-                        label = { Text(value.toString()) },
-                    )
-                }
-            }
-            Text(
-                stringResource(R.string.settings_mtu_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            val transportValue by vm.transport.collectAsStateWithLifecycle()
-            Text(stringResource(R.string.settings_transport), style = MaterialTheme.typography.labelLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(
-                    selected = transportValue == "stealth",
-                    onClick = { vm.setTransport("stealth") },
-                    label = { Text(stringResource(R.string.settings_transport_stealth)) },
-                )
-                FilterChip(
-                    selected = transportValue == "udp",
-                    onClick = { vm.setTransport("udp") },
-                    label = { Text(stringResource(R.string.settings_transport_udp)) },
-                )
-            }
-            Text(
-                stringResource(R.string.settings_transport_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            SessionBanner(sessionInfo)
             val ipv6Value by vm.ipv6.collectAsStateWithLifecycle()
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.settings_ipv6), Modifier.weight(1f))
-                Switch(checked = ipv6Value, onCheckedChange = { vm.setIpv6(it) })
-            }
-            Text(
-                stringResource(R.string.settings_ipv6_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            val excluded by vm.excludedCountries.collectAsStateWithLifecycle()
-            var showExcluded by remember { mutableStateOf(false) }
-            OutlinedButton(onClick = { showExcluded = true }, modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    if (excluded.isEmpty()) {
-                        stringResource(R.string.settings_excluded_none)
-                    } else {
-                        stringResource(R.string.settings_excluded_selected, excluded.size)
-                    },
-                )
-            }
-            if (showExcluded) {
-                ExcludedCountriesDialog(
-                    serversJson = serversJsonForExcluded,
-                    selected = excluded,
-                    onToggle = { vm.toggleExcludedCountry(it) },
-                    onDismiss = { showExcluded = false },
-                )
-            }
-            if (mode == "game") {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.settings_game_lock), Modifier.weight(1f))
-                    Switch(checked = gameLock, onCheckedChange = { vm.setGameLock(it) })
-                }
-                Text(
-                    stringResource(R.string.settings_game_lock_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                val granted =
-                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
-                        PackageManager.PERMISSION_GRANTED
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        stringResource(
-                            if (granted) R.string.settings_notifications_on else R.string.settings_notifications_off,
-                        ),
-                        Modifier.weight(1f),
-                    )
-                    if (!granted) {
-                        OutlinedButton(onClick = {
-                            context.startActivity(
-                                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                                    .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
-                            )
-                        }) { Text(stringResource(R.string.settings_notifications_enable)) }
-                    }
-                }
-            }
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.settings_autostart), Modifier.weight(1f))
-                Switch(checked = autostart, onCheckedChange = { vm.setAutostart(it) })
-            }
-            OutlinedTextField(
-                value = dnsText,
-                onValueChange = { dnsText = it },
-                label = { Text(stringResource(R.string.settings_api_dns)) },
-                supportingText = { Text(stringResource(R.string.settings_api_dns_hint)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Button(onClick = {
-                vm.setApiDns(dnsText.trim())
-                message = "saved"
-            }) { Text(stringResource(R.string.dialog_ok)) }
-
-            HorizontalDivider()
             Section(stringResource(R.string.settings_account))
             SessionStatusLine(sessionInfo, loginUi)
             if (sessionInfo.loggedIn) {
@@ -368,6 +171,207 @@ fun SettingsScreen(vm: NodeViewModel) {
                     onClick = { showSession = true },
                 ) { Text(stringResource(R.string.settings_debug_session)) }
             }
+
+            Section(stringResource(R.string.settings_appearance))
+            Text(stringResource(R.string.settings_theme), style = MaterialTheme.typography.labelLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(
+                    "system" to R.string.settings_theme_system,
+                    "light" to R.string.settings_theme_light,
+                    "dark" to R.string.settings_theme_dark,
+                ).forEach { (value, label) ->
+                    FilterChip(
+                        selected = themeMode == value,
+                        onClick = { vm.setThemeMode(value) },
+                        label = { Text(stringResource(label)) },
+                    )
+                }
+            }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.settings_dynamic), Modifier.weight(1f))
+                Switch(checked = dynamic, onCheckedChange = { vm.setDynamicColor(it) })
+            }
+
+            Text(stringResource(R.string.settings_language), style = MaterialTheme.typography.labelLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(selected = currentLanguage().isEmpty(), onClick = {
+                    setLanguage("")
+                }, label = { Text(stringResource(R.string.settings_language_system)) })
+                FilterChip(
+                    selected = currentLanguage() == "en",
+                    onClick = { setLanguage("en") },
+                    label = { Text("English") },
+                )
+                FilterChip(
+                    selected = currentLanguage() == "zh",
+                    onClick = { setLanguage("zh") },
+                    label = { Text("简体中文") },
+                )
+            }
+
+            HorizontalDivider()
+            Section(stringResource(R.string.settings_section_notifications))
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                val granted =
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+                        PackageManager.PERMISSION_GRANTED
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        stringResource(
+                            if (granted) R.string.settings_notifications_on else R.string.settings_notifications_off,
+                        ),
+                        Modifier.weight(1f),
+                    )
+                    if (!granted) {
+                        OutlinedButton(onClick = {
+                            context.startActivity(
+                                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                    .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
+                            )
+                        }) { Text(stringResource(R.string.settings_notifications_enable)) }
+                    }
+                }
+            }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                HorizontalDivider()
+                Section(stringResource(R.string.settings_behavior))
+                Text(stringResource(R.string.settings_mode), style = MaterialTheme.typography.labelLarge)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(selected = mode == "normal", onClick = {
+                        vm.setMode("normal")
+                    }, label = { Text(stringResource(R.string.servers_mode_normal)) })
+                    FilterChip(selected = mode == "game", onClick = {
+                        vm.setMode("game")
+                    }, label = { Text(stringResource(R.string.servers_mode_game)) })
+                }
+                OutlinedTextField(
+                    value = countryText,
+                    onValueChange = { countryText = it },
+                    label = { Text(stringResource(R.string.settings_default_country)) },
+                    supportingText = {
+                        Text(
+                            if (countryError) {
+                                stringResource(R.string.settings_default_country_invalid)
+                            } else {
+                                stringResource(R.string.settings_default_country_hint)
+                            },
+                        )
+                    },
+                    isError = countryError,
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // The saved value is shown through a composed string, not getString().
+                    Button(onClick = {
+                        val ok = vm.setCountryCode(countryText)
+                        countryError = !ok
+                        savedCountry = if (ok) countryText.trim().uppercase() else ""
+                    }) { Text(stringResource(R.string.dialog_ok)) }
+                    OutlinedButton(onClick = {
+                        countryText = ""
+                        countryError = false
+                        vm.setCountryCode("")
+                    }) { Text(stringResource(R.string.servers_auto)) }
+                }
+                if (savedCountry.isNotEmpty()) {
+                    Text(
+                        stringResource(R.string.settings_default_country_saved, savedCountry),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                val mtuValue by vm.mtu.collectAsStateWithLifecycle()
+                Text(stringResource(R.string.settings_mtu), style = MaterialTheme.typography.labelLarge)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(1200, 1320, 1420).forEach { value ->
+                        FilterChip(
+                            selected = mtuValue == value,
+                            onClick = { vm.setMtu(value) },
+                            label = { Text(value.toString()) },
+                        )
+                    }
+                }
+                Text(
+                    stringResource(R.string.settings_mtu_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                val transportValue by vm.transport.collectAsStateWithLifecycle()
+                Text(stringResource(R.string.settings_transport), style = MaterialTheme.typography.labelLarge)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = transportValue == "stealth",
+                        onClick = { vm.setTransport("stealth") },
+                        label = { Text(stringResource(R.string.settings_transport_stealth)) },
+                    )
+                    FilterChip(
+                        selected = transportValue == "udp",
+                        onClick = { vm.setTransport("udp") },
+                        label = { Text(stringResource(R.string.settings_transport_udp)) },
+                    )
+                }
+                Text(
+                    stringResource(R.string.settings_transport_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.settings_ipv6), Modifier.weight(1f))
+                    Switch(checked = ipv6Value, onCheckedChange = { vm.setIpv6(it) })
+                }
+                Text(
+                    stringResource(R.string.settings_ipv6_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                val excluded by vm.excludedCountries.collectAsStateWithLifecycle()
+                var showExcluded by remember { mutableStateOf(false) }
+                OutlinedButton(onClick = { showExcluded = true }, modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        if (excluded.isEmpty()) {
+                            stringResource(R.string.settings_excluded_none)
+                        } else {
+                            stringResource(R.string.settings_excluded_selected, excluded.size)
+                        },
+                    )
+                }
+                if (showExcluded) {
+                    ExcludedCountriesDialog(
+                        serversJson = serversJsonForExcluded,
+                        selected = excluded,
+                        onToggle = { vm.toggleExcludedCountry(it) },
+                        onDismiss = { showExcluded = false },
+                    )
+                }
+                if (mode == "game") {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.settings_game_lock), Modifier.weight(1f))
+                        Switch(checked = gameLock, onCheckedChange = { vm.setGameLock(it) })
+                    }
+                    Text(
+                        stringResource(R.string.settings_game_lock_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Text(stringResource(R.string.settings_autostart), Modifier.weight(1f))
+                Switch(checked = autostart, onCheckedChange = { vm.setAutostart(it) })
+            }
+            OutlinedTextField(
+                value = dnsText,
+                onValueChange = { dnsText = it },
+                label = { Text(stringResource(R.string.settings_api_dns)) },
+                supportingText = { Text(stringResource(R.string.settings_api_dns_hint)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Button(onClick = {
+                vm.setApiDns(dnsText.trim())
+                message = "saved"
+            }) { Text(stringResource(R.string.dialog_ok)) }
+
+            HorizontalDivider()
 
             HorizontalDivider()
             Section(stringResource(R.string.settings_flclash))
@@ -432,6 +436,27 @@ fun SettingsScreen(vm: NodeViewModel) {
                 )
             }
 
+            HorizontalDivider()
+            Section(stringResource(R.string.settings_section_about))
+            Text(
+                stringResource(R.string.about_version, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Text(
+                stringResource(R.string.about_license),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                stringResource(R.string.about_repo),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                stringResource(R.string.about_note),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             if (message.isNotEmpty()) {
                 Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
             }
@@ -539,6 +564,42 @@ fun importConfig(
 }
 
 /** One line that tells the user whether the stored session is actually usable. */
+@Composable
+private fun SessionBanner(info: SessionInfo) {
+    val expired = info.loggedIn && info.isExpired
+    val title =
+        when {
+            expired -> stringResource(R.string.settings_banner_expired)
+            info.loggedIn -> stringResource(R.string.settings_banner_signed_in, info.email)
+            else -> stringResource(R.string.settings_banner_signed_out)
+        }
+    val detail =
+        when {
+            expired -> stringResource(R.string.settings_banner_expired_hint)
+            info.loggedIn -> stringResource(R.string.settings_banner_plan, info.plan, info.lastVerifiedAt)
+            else -> stringResource(R.string.settings_banner_signed_out_hint)
+        }
+    val container =
+        if (expired) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceVariant
+    val content =
+        if (expired) {
+            MaterialTheme.colorScheme.onErrorContainer
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        }
+    androidx.compose.material3.Card(
+        colors =
+            androidx.compose.material3.CardDefaults
+                .cardColors(containerColor = container),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(title, style = MaterialTheme.typography.titleSmall, color = content)
+            Text(detail, style = MaterialTheme.typography.bodySmall, color = content)
+        }
+    }
+}
+
 @Composable
 private fun SessionStatusLine(
     info: SessionInfo,

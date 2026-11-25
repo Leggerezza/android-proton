@@ -2,6 +2,17 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/), generated with git-cliff.
 
+## 0.1.6 — 2026-11-25
+
+- **Log report**: Share now packages the ring log into a real `proton-node-<stamp>.log` file with a
+  diagnostic header (build, device, Android, timezone, network, session, tunnel state and
+  settings) before handing it to the chooser; Save writes the same file to Download via
+  MediaStore, and Copy keeps the quick path.
+- **Settings**: the session banner (expired / signed in / signed out) sits at the top, Account
+  moved next to it, and Notifications and About are their own sections.
+- **Servers**: a "By country" view ranks countries by their fastest measured entry, shows a flag
+  and the server count per country, and prints "not measured" instead of a blank latency.
+
 ## 0.1.5 — 2026-11-25
 
 - **Reconnect**: a tunnel that had been up now retries immediately with the entries that just

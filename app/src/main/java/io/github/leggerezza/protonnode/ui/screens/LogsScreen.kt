@@ -4,7 +4,6 @@ package io.github.leggerezza.protonnode.ui.screens
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -34,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.leggerezza.protonnode.R
+import io.github.leggerezza.protonnode.core.LogExport
 import io.github.leggerezza.protonnode.core.LogLevel
 import io.github.leggerezza.protonnode.core.classifyLogLine
 import io.github.leggerezza.protonnode.ui.NodeViewModel
@@ -41,7 +41,25 @@ import io.github.leggerezza.protonnode.ui.NodeViewModel
 @Composable
 fun LogsScreen(vm: NodeViewModel) {
     val logs by vm.logs.collectAsStateWithLifecycle()
+    val status by vm.status.collectAsStateWithLifecycle()
+    val session by vm.session.collectAsStateWithLifecycle()
+    val mode by vm.mode.collectAsStateWithLifecycle()
+    val transport by vm.transport.collectAsStateWithLifecycle()
+    val mtu by vm.mtu.collectAsStateWithLifecycle()
+    val ipv6 by vm.ipv6.collectAsStateWithLifecycle()
+    val excluded by vm.excludedCountries.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    var savedAt by remember { mutableStateOf("") }
+    val settings =
+        remember(mode, transport, mtu, ipv6, excluded) {
+            listOf(
+                "mode" to mode,
+                "transport" to transport,
+                "mtu" to mtu.toString(),
+                "ipv6" to ipv6.toString(),
+                "excludedCountries" to excluded.joinToString(","),
+            )
+        }
 
     LaunchedEffect(Unit) { vm.loadLogs() }
 
@@ -70,16 +88,16 @@ fun LogsScreen(vm: NodeViewModel) {
                 clipboard.setPrimaryClip(ClipData.newPlainText("proton logs", logs))
             }) { Text(stringResource(R.string.logs_copy)) }
             OutlinedButton(onClick = {
-                // Export = hand the (already redacted) text to any app that can
-                // store or send it: no file provider, no extra permission.
-                val send =
-                    Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_SUBJECT, "proton-node logs")
-                        putExtra(Intent.EXTRA_TEXT, logs)
-                    }
-                context.startActivity(Intent.createChooser(send, null))
-            }) { Text(stringResource(R.string.logs_export)) }
+                // Share packages the report into a real .log file first, the same
+                // shape Proton's own client sends.
+                val report = LogExport.build(context, status, session, settings, logs)
+                val file = LogExport.writeCacheFile(context, report)
+                LogExport.share(context, file)
+            }) { Text(stringResource(R.string.logs_share)) }
+            OutlinedButton(onClick = {
+                val report = LogExport.build(context, status, session, settings, logs)
+                savedAt = LogExport.saveToDownloads(context, report) ?: ""
+            }) { Text(stringResource(R.string.logs_save)) }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(
@@ -94,6 +112,9 @@ fun LogsScreen(vm: NodeViewModel) {
                     label = { Text(level.label + " " + (counts[level] ?: 0)) },
                 )
             }
+        }
+        if (savedAt.isNotEmpty()) {
+            Text(stringResource(R.string.logs_saved, savedAt), style = MaterialTheme.typography.labelSmall)
         }
         Text(
             stringResource(R.string.logs_secure_note),
