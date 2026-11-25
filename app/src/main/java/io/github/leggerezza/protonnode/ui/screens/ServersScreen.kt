@@ -19,7 +19,9 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -92,6 +94,7 @@ fun ServersScreen(vm: NodeViewModel) {
     var byLatency by remember { mutableStateOf(false) }
     var groupByCountry by remember { mutableStateOf(false) }
     val status by vm.status.collectAsStateWithLifecycle()
+    val measuring by vm.measuring.collectAsStateWithLifecycle()
     val currentServer = status.server
 
     val all = remember(serversJson) { parseServers(serversJson) }
@@ -192,6 +195,17 @@ fun ServersScreen(vm: NodeViewModel) {
                         )
                     }
             }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                OutlinedButton(onClick = { vm.measureLatencies("all") }, enabled = !measuring) {
+                    Text(stringResource(R.string.servers_measure))
+                }
+                if (measuring) LinearProgressIndicator(Modifier.fillMaxWidth())
+            }
+            Text(
+                stringResource(R.string.servers_rtt_legend),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },

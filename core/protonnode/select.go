@@ -30,6 +30,7 @@ type serverRow struct {
 	IPv6         bool    `json:"ipv6,omitempty"`
 	EntryIP      string  `json:"entryIP,omitempty"`
 	RTTMs        int64   `json:"rttMs,omitempty"`
+	RTTSource    string  `json:"rttSource,omitempty"`
 	Tier         int     `json:"tier"`
 }
 

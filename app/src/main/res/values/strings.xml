@@ -163,4 +163,6 @@
     <string name="about_note">Unofficial third-party client. It ships no VPN servers; Proton\'s service needs your own account.</string>
     <string name="servers_group_country">By country</string>
     <string name="servers_not_measured">not measured</string>
+    <string name="servers_measure">Measure latency</string>
+    <string name="servers_rtt_legend">✓ verified by a WireGuard handshake · ~ TCP round trip only · — never measured</string>
 </resources>

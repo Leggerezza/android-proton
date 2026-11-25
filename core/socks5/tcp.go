@@ -77,6 +77,10 @@ type Server struct {
 	lastFailAt     time.Time
 	failSuppressed int
 
+	lastQuietKey    string
+	lastQuietAt     time.Time
+	quietSuppressed int
+
 	limiter chan struct{}
 }
 
@@ -160,13 +164,13 @@ func (s *Server) handle(ctx context.Context, c net.Conn) {
 	_ = c.SetDeadline(time.Now().Add(30 * time.Second))
 
 	if err := s.handshake(c); err != nil {
-		s.Logf("socks5: handshake from %s failed: %v", c.RemoteAddr(), err)
+		s.logQuietFailure("handshake", err)
 		return
 	}
 
 	target, cmd, err := readRequest(c)
 	if err != nil {
-		s.Logf("socks5: bad request from %s: %v", c.RemoteAddr(), err)
+		s.logQuietFailure("bad request", err)
 		return
 	}
 	switch cmd {
@@ -414,4 +418,28 @@ func (s *Server) logConnectFailure(rep byte, target string, err error) {
 		return
 	}
 	s.Logf("socks5: CONNECT failed (rep %#x, %s, %s)", rep, addressFamily(target), errorClass(err))
+}
+
+// logQuietFailure aggregates client-side protocol noise (health probes that
+// connect and close, half-open reads): mihomo opens dozens of these per minute,
+// and a single line per second per kind is enough to keep the ring log readable.
+func (s *Server) logQuietFailure(kind string, err error) {
+	key := kind + "/" + errorClass(err)
+	s.failMu.Lock()
+	now := time.Now()
+	if key == s.lastQuietKey && now.Sub(s.lastQuietAt) < time.Second {
+		s.quietSuppressed++
+		s.failMu.Unlock()
+		return
+	}
+	suppressed := s.quietSuppressed
+	s.lastQuietKey = key
+	s.lastQuietAt = now
+	s.quietSuppressed = 0
+	s.failMu.Unlock()
+	if suppressed > 0 {
+		s.Logf("socks5: %s (%s) x%d", kind, errorClass(err), suppressed+1)
+		return
+	}
+	s.Logf("socks5: %s (%s)", kind, errorClass(err))
 }

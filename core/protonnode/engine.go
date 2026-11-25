@@ -37,7 +37,8 @@ var (
 // process and PROMPT.md 5.2 specifies one tunnel per process, so a singleton is
 // the honest model (no hidden multi-instance state).
 type engine struct {
-	mu sync.Mutex
+	latency map[string]int64
+	mu      sync.Mutex
 
 	store *store.Store
 	log   *ringLog
@@ -472,11 +473,22 @@ func ListServers(country string, secureCore bool) (string, error) {
 			}
 		}
 	}
+	eng.mu.Lock()
+	latency := make(map[string]int64, len(eng.latency))
+	for k, v := range eng.latency {
+		latency[k] = v
+	}
+	eng.mu.Unlock()
 	out := make([]serverRow, 0, len(matches))
 	for i := range matches {
 		row := serverRowOf(&matches[i])
 		if ms, ok := rtts[row.EntryIP]; ok {
+			// A verified L3 result is the better number.
 			row.RTTMs = ms
+			row.RTTSource = "l3"
+		} else if ms, ok := latency[row.Name]; ok {
+			row.RTTMs = ms
+			row.RTTSource = "tcp"
 		}
 		out = append(out, row)
 	}
@@ -486,6 +498,67 @@ func ListServers(country string, secureCore bool) (string, error) {
 		return "", err
 	}
 	return string(buf), nil
+}
+
+// MeasureLatencies runs the cheap L1 TCP probe over the server list (bounded) and
+// remembers the round trip per logical server, so the list can show a number for
+// entries that were never part of an L3 verification. It does not touch the
+// running tunnel.
+func MeasureLatencies(scope string) (int, error) {
+	eng.mu.Lock()
+	c := eng.client
+	tier := eng.tier
+	eng.mu.Unlock()
+	if c == nil {
+		return 0, errNotInitialized
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+	servers, err := eng.servers(ctx)
+	if err != nil {
+		return 0, err
+	}
+	targets, err := buildTargets(servers, scope, tier)
+	if err != nil {
+		return 0, err
+	}
+	const maxTargets = 160
+	if len(targets) > maxTargets {
+		targets = targets[:maxTargets]
+	}
+	if len(targets) == 0 {
+		return 0, errors.New("no servers to measure")
+	}
+	runner, err := scan.New(targets, scan.Options{
+		Level:       scan.LevelTCP,
+		Concurrency: 32,
+		L1Timeout:   3 * time.Second,
+		Logf:        eng.logfOrNil,
+	})
+	if err != nil {
+		return 0, err
+	}
+	done := runner.Start(ctx)
+	select {
+	case <-done:
+	case <-ctx.Done():
+		runner.Cancel()
+		<-done
+	}
+	results := runner.Results()
+	eng.mu.Lock()
+	if eng.latency == nil {
+		eng.latency = map[string]int64{}
+	}
+	for i := range results {
+		if results[i].RTTMs > 0 {
+			eng.latency[results[i].Server] = results[i].RTTMs
+		}
+	}
+	n := len(eng.latency)
+	eng.mu.Unlock()
+	eng.logfOrNil("latency: measured %d of %d targets (total known %d)", len(results), len(targets), n)
+	return len(results), nil
 }
 
 // RecentLogs returns the newest n redacted protocol lines, one per line.

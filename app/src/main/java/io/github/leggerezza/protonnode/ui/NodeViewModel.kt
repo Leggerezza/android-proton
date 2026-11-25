@@ -142,6 +142,20 @@ class NodeViewModel(
         _session.value = SessionInfo.from(CoreController.sessionState())
     }
 
+    private val _measuring = MutableStateFlow(false)
+    val measuring: StateFlow<Boolean> = _measuring.asStateFlow()
+
+    /** Probes the current scope with L1 and refreshes the list with the numbers. */
+    fun measureLatencies(scope: String = "all") {
+        if (_measuring.value) return
+        _measuring.value = true
+        viewModelScope.launch {
+            runCatching { CoreController.measureLatencies(scope) }
+            _servers.value = CoreController.listServers("", false)
+            _measuring.value = false
+        }
+    }
+
     fun loadServers() {
         viewModelScope.launch {
             _servers.value = CoreController.listServers("", false)

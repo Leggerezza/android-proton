@@ -163,4 +163,6 @@
     <string name="about_note">非官方第三方客户端，本身不提供 VPN 服务器；Proton 服务需要你自己的账号。</string>
     <string name="servers_group_country">按国家</string>
     <string name="servers_not_measured">未测量</string>
+    <string name="servers_measure">测量延迟</string>
+    <string name="servers_rtt_legend">✓ 已通过 WireGuard 握手验证 · ~ 仅 TCP 往返 · — 从未测量</string>
 </resources>

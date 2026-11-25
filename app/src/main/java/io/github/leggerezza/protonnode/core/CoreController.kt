@@ -142,6 +142,9 @@ object CoreController {
             runCatching { Protonnode.scanResults(scanId) }.getOrDefault("{}")
         }
 
+    suspend fun measureLatencies(scope: String): Int =
+        withContext(io) { runCatching { Protonnode.measureLatencies(scope).toInt() }.getOrDefault(0) }
+
     suspend fun cancelScan(scanId: String): Boolean =
         withContext(io) {
             runCatching { Protonnode.cancelScan(scanId) }.getOrDefault(false)

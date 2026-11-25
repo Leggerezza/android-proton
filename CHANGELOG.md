@@ -2,6 +2,18 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/), generated with git-cliff.
 
+## 0.1.7 — 2026-11-25
+
+- **Latency measurement**: Servers gained a "Measure latency" action that runs the L1 TCP probe
+  over the current list (bounded, background) and merges the round trip into every row, so a
+  server no longer shows a blank because it was never part of an L3 scan. The list marks the
+  source: ✓ verified by a WireGuard handshake, ~ TCP round trip only, — never measured.
+- **Country view**: one row per exit country with a flag, server count and the fastest measured
+  latency, sorted by it; unmeasured countries say "not measured".
+- **Log noise**: SOCKS handshake/bad-request failures are aggregated per second per kind, like
+  the CONNECT failures, so a client that opens hundreds of doomed connections cannot flood the
+  ring log.
+
 ## 0.1.6 — 2026-11-25
 
 - **Log report**: Share now packages the ring log into a real `proton-node-<stamp>.log` file with a
