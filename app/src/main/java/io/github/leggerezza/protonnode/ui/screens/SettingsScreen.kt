@@ -11,6 +11,7 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -34,11 +36,15 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -54,6 +60,7 @@ import io.github.leggerezza.protonnode.ui.LoginMessageKind
 import io.github.leggerezza.protonnode.ui.LoginUi
 import io.github.leggerezza.protonnode.ui.NodeViewModel
 import io.github.leggerezza.protonnode.ui.theme.formatTimestamp
+import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsScreen(vm: NodeViewModel) {
@@ -100,20 +107,55 @@ fun SettingsScreen(vm: NodeViewModel) {
         loginCooldownSeconds = 0
     }
 
+    val scrollState = rememberScrollState()
+    val scope = rememberCoroutineScope()
+    val offsets = remember { mutableStateMapOf<String, Int>() }
+
+    fun jump(key: String) {
+        scope.launch { scrollState.animateScrollTo(offsets[key] ?: 0) }
+    }
+
     Column(
         modifier =
             Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Column(Modifier.widthIn(max = 720.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.headlineSmall)
+            // Jump bar: every category is one tap away without a second activity. The
+            // offsets are recorded by the sections themselves, so no layout is assumed.
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                listOf(
+                    "account" to R.string.settings_account,
+                    "theme" to R.string.settings_appearance,
+                    "language" to R.string.settings_language,
+                    "notifications" to R.string.settings_section_notifications,
+                    "behavior" to R.string.settings_behavior,
+                    "flclash" to R.string.settings_flclash,
+                    "about" to R.string.settings_section_about,
+                ).forEach { (key, label) ->
+                    AssistChip(
+                        onClick = { jump(key) },
+                        label = { Text(stringResource(label)) },
+                    )
+                }
+            }
 
             SessionBanner(sessionInfo)
             val ipv6Value by vm.ipv6.collectAsStateWithLifecycle()
-            Section(stringResource(R.string.settings_account))
+            Section(
+                stringResource(R.string.settings_account),
+                Modifier.onGloballyPositioned {
+                    offsets["account"] =
+                        it.positionInParent().y.toInt()
+                },
+            )
             SessionStatusLine(sessionInfo, loginUi)
             if (sessionInfo.loggedIn) {
                 OutlinedButton(onClick = { vm.logout() }) { Text(stringResource(R.string.settings_logout)) }
@@ -172,7 +214,13 @@ fun SettingsScreen(vm: NodeViewModel) {
                 ) { Text(stringResource(R.string.settings_debug_session)) }
             }
 
-            Section(stringResource(R.string.settings_appearance))
+            Section(
+                stringResource(R.string.settings_appearance),
+                Modifier.onGloballyPositioned {
+                    offsets["theme"] =
+                        it.positionInParent().y.toInt()
+                },
+            )
             Text(stringResource(R.string.settings_theme), style = MaterialTheme.typography.labelLarge)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(
@@ -192,7 +240,13 @@ fun SettingsScreen(vm: NodeViewModel) {
                 Switch(checked = dynamic, onCheckedChange = { vm.setDynamicColor(it) })
             }
 
-            Text(stringResource(R.string.settings_language), style = MaterialTheme.typography.labelLarge)
+            Section(
+                stringResource(R.string.settings_language),
+                Modifier.onGloballyPositioned {
+                    offsets["language"] =
+                        it.positionInParent().y.toInt()
+                },
+            )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(selected = currentLanguage().isEmpty(), onClick = {
                     setLanguage("")
@@ -210,7 +264,13 @@ fun SettingsScreen(vm: NodeViewModel) {
             }
 
             HorizontalDivider()
-            Section(stringResource(R.string.settings_section_notifications))
+            Section(
+                stringResource(R.string.settings_section_notifications),
+                Modifier.onGloballyPositioned {
+                    offsets["notifications"] =
+                        it.positionInParent().y.toInt()
+                },
+            )
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 val granted =
                     ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
@@ -234,7 +294,13 @@ fun SettingsScreen(vm: NodeViewModel) {
             }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 HorizontalDivider()
-                Section(stringResource(R.string.settings_behavior))
+                Section(
+                    stringResource(R.string.settings_behavior),
+                    Modifier.onGloballyPositioned {
+                        offsets["behavior"] =
+                            it.positionInParent().y.toInt()
+                    },
+                )
                 Text(stringResource(R.string.settings_mode), style = MaterialTheme.typography.labelLarge)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(selected = mode == "normal", onClick = {
@@ -374,7 +440,13 @@ fun SettingsScreen(vm: NodeViewModel) {
             HorizontalDivider()
 
             HorizontalDivider()
-            Section(stringResource(R.string.settings_flclash))
+            Section(
+                stringResource(R.string.settings_flclash),
+                Modifier.onGloballyPositioned {
+                    offsets["flclash"] =
+                        it.positionInParent().y.toInt()
+                },
+            )
             Text(
                 stringResource(R.string.settings_flclash_hint),
                 style = MaterialTheme.typography.bodySmall,
@@ -437,7 +509,13 @@ fun SettingsScreen(vm: NodeViewModel) {
             }
 
             HorizontalDivider()
-            Section(stringResource(R.string.settings_section_about))
+            Section(
+                stringResource(R.string.settings_section_about),
+                Modifier.onGloballyPositioned {
+                    offsets["about"] =
+                        it.positionInParent().y.toInt()
+                },
+            )
             Text(
                 stringResource(R.string.about_version, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
                 style = MaterialTheme.typography.bodySmall,
@@ -524,8 +602,11 @@ fun SettingsScreen(vm: NodeViewModel) {
 }
 
 @Composable
-private fun Section(title: String) {
-    Text(title, style = MaterialTheme.typography.titleMedium)
+private fun Section(
+    title: String,
+    modifier: Modifier = Modifier,
+) {
+    Text(title, style = MaterialTheme.typography.titleMedium, modifier = modifier)
 }
 
 private fun currentLanguage(): String = AppCompatDelegate.getApplicationLocales().toLanguageTags().substringBefore("-")

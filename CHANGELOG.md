@@ -2,6 +2,13 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/), generated with git-cliff.
 
+## 0.1.8 — 2026-11-25
+
+- **Settings navigation**: a category bar (Account / Theme & colours / Language / Notifications /
+  Behavior / FlClash / About) jumps to the matching section. Sections record their own offsets,
+  so the bar never assumes a layout. The real sub-page split is still pending - an earlier
+  attempt broke the layout and was reverted.
+
 ## 0.1.7 — 2026-11-25
 
 - **Latency measurement**: Servers gained a "Measure latency" action that runs the L1 TCP probe
