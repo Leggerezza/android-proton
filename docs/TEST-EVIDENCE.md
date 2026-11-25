@@ -1738,6 +1738,26 @@ Go 侧 `serverRow` 现在把 Proton 的特性位（`FeatureSecureCore/Tor/P2P/St
 （验证后已取消勾选，恢复为空，避免影响后续测试。）
 
 **未在本轮验证**（需要网络实测）：UDP 传输的实际吞吐、IPv6 站点访问。
+### P7-E2 一次真实“网络干扰”日志的分析（2026-11-25）
+
+用户提供的 300 行节点日志（校园网环境）分成两段，正好是“被干扰”与“恢复”的对照：
+
+| 时间 | 现象 | 判读 |
+|---|---|---|
+| 00:22–00:25 | API 全部 `EOF`；`l1 200/200 reachable` 但 `l2 0/24 tls ok` | TCP 可达、**TLS 被中断**，不是选服或隧道逻辑问题 |
+| 00:24 / 00:25 | `connect failed: no entry passed L3 verification`，60s 后重试 | 没有一台完成 TLS，自然没有 L3 |
+| 00:36 | `stealth: TLS established ... (sni www.pool.ntp.org)`、`tunnel up in 251ms` | 网络恢复后**一次握手成功** |
+| 00:47 | `servers: 2784 logical servers from the API` | API 也恢复 |
+
+结论：失败源于网络对 TLS 的干扰（门户未认证 / 校园防火墙），App 侧的重试与缓存降级行为正确。
+
+据此新增的诊断能力（0.1.4）：
+
+- 扫描汇总带上失败分类：`l2 0/24 tls ok (eof 24, timeout 3)`；
+- API 传输层失败时回退一次 `vpn-api.proton.me`；
+- 状态行恢复显示实际使用的 SNI（UDP 传输下显示 `udp`）。
+
+界面小改（0.1.4）：服务器行新增 **IPv6** 徽标；首页 Details 卡片新增 **Transport** 与 **IPv6** 两行。
 ### P6-E2 与 PROMPT §7.1 的 8 条对照
 
 | # | 验收项 | 状态 |

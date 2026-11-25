@@ -136,4 +136,6 @@
     <string name="disclaimer_body">Proton Node is an unofficial, open-source third-party client for Proton VPN.\n\nIt does not provide any VPN servers of its own: the servers belong to Proton and you need your own Proton account. The project is not affiliated with or endorsed by Proton AG.</string>
     <string name="disclaimer_continue">Continue</string>
     <string name="disclaimer_continue_in">Continue (%1$d)</string>
+    <string name="home_transport">Transport</string>
+    <string name="home_ipv6">IPv6</string>
 </resources>

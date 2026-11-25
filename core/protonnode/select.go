@@ -27,6 +27,7 @@ type serverRow struct {
 	P2P          bool    `json:"p2p,omitempty"`
 	Tor          bool    `json:"tor,omitempty"`
 	Streaming    bool    `json:"streaming,omitempty"`
+	IPv6         bool    `json:"ipv6,omitempty"`
 	EntryIP      string  `json:"entryIP,omitempty"`
 	RTTMs        int64   `json:"rttMs,omitempty"`
 	Tier         int     `json:"tier"`
@@ -44,6 +45,7 @@ func serverRowOf(s *proton.LogicalServer) serverRow {
 		P2P:          s.IsP2P(),
 		Tor:          s.IsTor(),
 		Streaming:    s.IsStreaming(),
+		IPv6:         s.IsIPv6Supported(),
 		Tier:         s.EffectiveTier(),
 	}
 	if ps := s.BestPhysical(); ps != nil {

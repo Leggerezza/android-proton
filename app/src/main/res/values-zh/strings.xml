@@ -136,4 +136,6 @@
     <string name="disclaimer_body">Proton Node 是一个非官方的、开源的 Proton VPN 第三方客户端。\n\n它本身不提供任何 VPN 服务器：服务器属于 Proton，且需要你自己的 Proton 账号。本项目与 Proton AG 无隶属关系，也未获其背书。</string>
     <string name="disclaimer_continue">继续</string>
     <string name="disclaimer_continue_in">继续（%1$d）</string>
+    <string name="home_transport">传输</string>
+    <string name="home_ipv6">IPv6</string>
 </resources>

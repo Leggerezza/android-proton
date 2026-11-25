@@ -37,6 +37,8 @@ fun HomeScreen(
     expanded: Boolean,
 ) {
     val status by vm.status.collectAsStateWithLifecycle()
+    val transport by vm.transport.collectAsStateWithLifecycle()
+    val ipv6 by vm.ipv6.collectAsStateWithLifecycle()
     val rxRate by vm.rxRate.collectAsStateWithLifecycle()
     val txRate by vm.txRate.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) {
@@ -93,11 +95,11 @@ fun HomeScreen(
         }
         if (expanded) {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                DetailsCard(status, Modifier.weight(1f))
+                DetailsCard(status, transport, ipv6, Modifier.weight(1f))
                 TrafficCard(status, rxRate, txRate, Modifier.weight(1f))
             }
         } else {
-            DetailsCard(status, Modifier.fillMaxWidth())
+            DetailsCard(status, transport, ipv6, Modifier.fillMaxWidth())
             TrafficCard(status, rxRate, txRate, Modifier.fillMaxWidth())
         }
         if (pinnedServer.isNotEmpty()) {
@@ -158,6 +160,8 @@ private fun stateLabel(state: String): String =
 @Composable
 private fun DetailsCard(
     status: StatusSnapshot,
+    transport: String,
+    ipv6: Boolean,
     modifier: Modifier,
 ) {
     OutlinedCard(modifier) {
@@ -169,6 +173,17 @@ private fun DetailsCard(
                 if (status.handshakeMs > 0) status.handshakeMs.toString() + " ms" else "—",
             )
             infoRow(stringResource(R.string.home_mode), status.mode.ifEmpty { "—" })
+            infoRow(
+                stringResource(R.string.home_transport),
+                if (transport ==
+                    "udp"
+                ) {
+                    stringResource(R.string.settings_transport_udp)
+                } else {
+                    stringResource(R.string.settings_transport_stealth)
+                },
+            )
+            infoRow(stringResource(R.string.home_ipv6), if (ipv6) "on" else "off")
         }
     }
 }

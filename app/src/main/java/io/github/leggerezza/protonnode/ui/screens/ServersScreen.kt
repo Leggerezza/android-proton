@@ -47,6 +47,7 @@ data class ServerRow(
     val p2p: Boolean,
     val tor: Boolean,
     val streaming: Boolean,
+    val ipv6: Boolean,
     val entryIP: String,
     val rttMs: Long,
 )
@@ -67,6 +68,7 @@ fun parseServers(json: String): List<ServerRow> =
                 p2p = o.optBoolean("p2p", false),
                 tor = o.optBoolean("tor", false),
                 streaming = o.optBoolean("streaming", false),
+                ipv6 = o.optBoolean("ipv6", false),
                 entryIP = o.optString("entryIP", ""),
                 rttMs = o.optLong("rttMs", 0L),
             )
@@ -226,6 +228,7 @@ fun ServersScreen(vm: NodeViewModel) {
                                         if (row.tor) add("Tor")
                                         if (row.p2p) add("P2P")
                                         if (row.streaming) add("Streaming")
+                                        if (row.ipv6) add("IPv6")
                                     }
                                 Text(
                                     row.country +
