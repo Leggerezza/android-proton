@@ -165,4 +165,7 @@
     <string name="servers_not_measured">未测量</string>
     <string name="servers_measure">测量延迟</string>
     <string name="servers_rtt_legend">✓ 已通过 WireGuard 握手验证 · ~ 仅 TCP 往返 · — 从未测量</string>
+    <string name="settings_back">返回</string>
+    <string name="about_version_short">版本 %1$s</string>
+    <string name="settings_flclash_hint_short">配置文件、导入与导出</string>
 </resources>

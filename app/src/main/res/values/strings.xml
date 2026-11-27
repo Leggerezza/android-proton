@@ -165,4 +165,7 @@
     <string name="servers_not_measured">not measured</string>
     <string name="servers_measure">Measure latency</string>
     <string name="servers_rtt_legend">✓ verified by a WireGuard handshake · ~ TCP round trip only · — never measured</string>
+    <string name="settings_back">Back</string>
+    <string name="about_version_short">Version %1$s</string>
+    <string name="settings_flclash_hint_short">Profile, import and export</string>
 </resources>

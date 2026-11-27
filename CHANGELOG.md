@@ -2,6 +2,14 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/), generated with git-cliff.
 
+## 0.1.9 — 2026-11-27
+
+- **Settings is now a root list with real sub-pages**: Account, Theme & colors, Language,
+  Notifications, Behavior, FlClash and About each open their own page with a back arrow, and the
+  root row shows the current value (session, theme, language, notification state, mode/transport,
+  version). The single scrolling page and the jump bar are gone; a layout that broke twice is
+  replaced by separate composables, verified on the emulator.
+
 ## 0.1.8 — 2026-11-25
 
 - **Settings navigation**: a category bar (Account / Theme & colours / Language / Notifications /
