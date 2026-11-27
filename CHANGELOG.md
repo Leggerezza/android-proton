@@ -2,6 +2,14 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/), generated with git-cliff.
 
+## 0.2.0 — 2026-11-27
+
+- **Fast first connect**: the node now probes the pool over plain TCP and connects to the first
+  entry under 700 ms immediately (then verifies it with the WireGuard handshake); the full L2/L3
+  scan only runs when no quick entry answers or the quick ones fail.
+- **Saved logs keep their name**: MediaStore was appending ".txt" to the text/plain download;
+  the save path now uses an opaque MIME type, so the file stays "proton-node-….log".
+
 ## 0.1.9 — 2026-11-27
 
 - **Settings is now a root list with real sub-pages**: Account, Theme & colors, Language,

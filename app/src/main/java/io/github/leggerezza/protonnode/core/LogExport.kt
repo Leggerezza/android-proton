@@ -28,6 +28,9 @@ import java.util.TimeZone
 object LogExport {
     private const val FILE_PREFIX = "proton-node-"
     private const val MIME = "text/plain"
+    // MediaStore appends ".txt" to text/plain names it thinks lack an extension;
+    // a log is opaque bytes, so it keeps the exact name we give it.
+    private const val SAVE_MIME = "application/octet-stream"
 
     fun stamp(): String =
         SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US)
@@ -108,7 +111,7 @@ object LogExport {
                 val values =
                     ContentValues().apply {
                         put(MediaStore.Downloads.DISPLAY_NAME, name)
-                        put(MediaStore.Downloads.MIME_TYPE, MIME)
+                        put(MediaStore.Downloads.MIME_TYPE, SAVE_MIME)
                         put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
                         put(MediaStore.Downloads.IS_PENDING, 1)
                     }

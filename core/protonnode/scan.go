@@ -332,6 +332,14 @@ func (e *engine) pickCandidates(ctx context.Context, servers []proton.LogicalSer
 				}
 			}
 		}
+		// Speed beats optimality for the first connection: pick the quickest
+		// entry that answers on TCP below the "good enough" threshold and try a
+		// real handshake with it, instead of waiting for the full L2/L3 ladder.
+		if picks, ferr := e.fastStart(ctx, candidates, cfg); ferr == nil && len(picks) > 0 {
+			return picks, nil
+		} else if ferr != nil {
+			e.logfOrNil("fast start: %v (falling back to the full scan)", ferr)
+		}
 		picks, err := e.inlineScan(ctx, candidates, cfg)
 		if err == nil && len(picks) > 0 {
 			return picks, nil
@@ -560,3 +568,70 @@ func (e *engine) cachedScanCandidates(n int) []scan.Result {
 }
 
 var _ = errors.New
+
+// fastStartThreshold is "acceptable for now": a TCP round trip below this is
+// worth connecting to immediately while the full scan runs afterwards.
+const fastStartThreshold = 700 * time.Millisecond
+
+// fastStart probes the pool with plain TCP and returns the quickest entries that
+// answer within fastStartThreshold. It never runs L2/L3 itself: the caller's
+// handshake is the verification.
+func (e *engine) fastStart(ctx context.Context, candidates []proton.LogicalServer, cfg startConfig) ([]candidate, error) {
+	const maxPool = 200
+	pool := make([]scan.Target, 0, maxPool)
+	byEntry := map[string]proton.LogicalServer{}
+	for i := range candidates {
+		s := &candidates[i]
+		ps := s.BestPhysical()
+		if ps == nil || ps.X25519PublicKey == "" {
+			continue
+		}
+		if _, dup := byEntry[ps.EntryIP]; dup {
+			continue
+		}
+		byEntry[ps.EntryIP] = *s
+		pool = append(pool, scan.Target{
+			Server: s.Name, EntryIP: ps.EntryIP, Port: 443, ServerKey: ps.X25519PublicKey,
+			Country: s.ExitCountry, Score: s.Score, Load: s.Load,
+		})
+		if len(pool) >= maxPool {
+			break
+		}
+	}
+	if len(pool) == 0 {
+		return nil, errors.New("fast start: no target with a WireGuard key")
+	}
+	runner, err := scan.New(pool, scan.Options{
+		Level:       scan.LevelTCP,
+		Concurrency: 32,
+		L1Timeout:   3 * time.Second,
+		Logf:        e.logfOrNil,
+	})
+	if err != nil {
+		return nil, err
+	}
+	done := runner.Start(ctx)
+	select {
+	case <-done:
+	case <-ctx.Done():
+		runner.Cancel()
+		<-done
+		return nil, ctx.Err()
+	}
+	results := runner.Results()
+	quick := make([]scan.Result, 0, 3)
+	for _, res := range results {
+		if res.RTTMs > 0 && time.Duration(res.RTTMs)*time.Millisecond <= fastStartThreshold {
+			quick = append(quick, res)
+			if len(quick) >= 3 {
+				break
+			}
+		}
+	}
+	if len(quick) == 0 {
+		return nil, fmt.Errorf("fast start: no entry answered under %s", fastStartThreshold)
+	}
+	e.logfOrNil("fast start: %d candidates under %s, first %s (%d ms)",
+		len(quick), fastStartThreshold, quick[0].Server, quick[0].RTTMs)
+	return candidatesFromResults(nil, quick), nil
+}
