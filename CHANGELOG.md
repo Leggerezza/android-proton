@@ -7,6 +7,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/), generated with git-clif
 - **Fast first connect**: the node now probes the pool over plain TCP and connects to the first
   entry under 700 ms immediately (then verifies it with the WireGuard handshake); the full L2/L3
   scan only runs when no quick entry answers or the quick ones fail.
+- **Certificate key rotation**: Proton answers 409/2500 ("client public key fingerprint
+  conflict") when the stored Ed25519 key is already registered elsewhere; the node now rotates the
+  seed and retries the certificate request once instead of retrying forever.
 - **Saved logs keep their name**: MediaStore was appending ".txt" to the text/plain download;
   the save path now uses an opaque MIME type, so the file stays "proton-node-….log".
 

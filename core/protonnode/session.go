@@ -42,6 +42,23 @@ func (s *sessionJSON) setTokens(t proton.Tokens) {
 
 // keyPair restores the device key pair, generating one on first use. The seed
 // is the part worth persisting: it is what Proton registered as a device.
+// rotateSeed replaces the Ed25519 seed with a fresh random one; Proton refuses a
+// public key whose fingerprint is already registered, and only a new key clears
+// that conflict.
+func (s *sessionJSON) rotateSeed() (*stealth.KeyPair, error) {
+	seed := make([]byte, 32)
+	if _, err := rand.Read(seed); err != nil {
+		return nil, fmt.Errorf("generate ed25519 seed: %w", err)
+	}
+	kp, err := stealth.KeyPairFromSeed(seed)
+	if err != nil {
+		return nil, err
+	}
+	s.SeedB64 = base64.StdEncoding.EncodeToString(kp.Seed())
+	s.Certificate = nil
+	return kp, nil
+}
+
 func (s *sessionJSON) keyPair() (*stealth.KeyPair, error) {
 	if s.SeedB64 == "" {
 		kp, err := stealth.NewKeyPair()
@@ -100,6 +117,22 @@ func (e *engine) ensureCertificate(ctx context.Context) error {
 	}
 	e.logfOrNil("certificate: requesting a new one for device %s", e.session.DeviceName)
 	cert, err := e.client.RequestCertificate(ctx, pubPEM, e.session.DeviceName, proton.CertificateFeatures{})
+	if err != nil && isFingerprintConflict(err) {
+		// Proton keeps a fingerprint per device; reusing a key that is already
+		// registered elsewhere fails with 409/2500 ("fingerprint conflict").
+		// Rotating the Ed25519 seed is the documented fix, and the rotated seed
+		// is persisted with the session on the next poll.
+		e.logfOrNil("certificate: key fingerprint conflict, rotating the client key")
+		kp, rerr := e.session.rotateSeed()
+		if rerr != nil {
+			return rerr
+		}
+		e.markSessionDirty()
+		if pubPEM, err = kp.PublicKeyPEM(); err != nil {
+			return err
+		}
+		cert, err = e.client.RequestCertificate(ctx, pubPEM, e.session.DeviceName, proton.CertificateFeatures{})
+	}
 	if err != nil {
 		return err
 	}
@@ -175,4 +208,11 @@ func (e *engine) marshalSession() (string, error) {
 		return "", err
 	}
 	return string(buf), nil
+}
+
+// isFingerprintConflict reports Proton's 409/2500 "client public key
+// fingerprint conflict" answer, the one error that a key rotation fixes.
+func isFingerprintConflict(err error) bool {
+	apiErr, ok := err.(*proton.APIError)
+	return ok && apiErr.Status == 409 && apiErr.Code == 2500
 }
