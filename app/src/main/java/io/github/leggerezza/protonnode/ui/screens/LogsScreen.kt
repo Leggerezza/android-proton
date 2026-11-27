@@ -127,22 +127,19 @@ fun LogsScreen(vm: NodeViewModel) {
             LazyColumn(Modifier.fillMaxWidth(), state = listState) {
                 items(lines) { line ->
                     val level = classifyLogLine(line)
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            level.label,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 11.sp,
-                            color = levelColor(level),
-                            modifier = Modifier.padding(top = 1.dp),
-                        )
-                        Text(
-                            line,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 12.sp,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(vertical = 1.dp),
-                        )
-                    }
+                    Text(
+                        withLevel(line, level),
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 12.sp,
+                        style = MaterialTheme.typography.bodySmall,
+                        color =
+                            when (level) {
+                                LogLevel.ERROR -> MaterialTheme.colorScheme.error
+                                LogLevel.WARN -> MaterialTheme.colorScheme.tertiary
+                                LogLevel.INFO -> MaterialTheme.colorScheme.onSurface
+                            },
+                        modifier = Modifier.padding(vertical = 1.dp),
+                    )
                 }
             }
         }
@@ -156,3 +153,16 @@ private fun levelColor(level: LogLevel): Color =
         LogLevel.WARN -> MaterialTheme.colorScheme.tertiary
         LogLevel.INFO -> MaterialTheme.colorScheme.onSurfaceVariant
     }
+
+/** "09:19:30.429 INFO core: …" - the level lives in the line, after the clock. */
+private fun withLevel(
+    line: String,
+    level: LogLevel,
+): String {
+    val match = Regex("^(\\d{2}:\\d{2}:\\d{2}\\.\\d{3})\\s+(.*)$").find(line)
+    return if (match != null) {
+        match.groupValues[1] + " " + level.label + " " + match.groupValues[2]
+    } else {
+        level.label + " " + line
+    }
+}

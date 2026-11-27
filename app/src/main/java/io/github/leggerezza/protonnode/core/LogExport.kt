@@ -28,6 +28,7 @@ import java.util.TimeZone
 object LogExport {
     private const val FILE_PREFIX = "proton-node-"
     private const val MIME = "text/plain"
+
     // MediaStore appends ".txt" to text/plain names it thinks lack an extension;
     // a log is opaque bytes, so it keeps the exact name we give it.
     private const val SAVE_MIME = "application/octet-stream"
@@ -116,7 +117,12 @@ object LogExport {
                         put(MediaStore.Downloads.IS_PENDING, 1)
                     }
                 val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: return null
-                resolver.openOutputStream(uri)?.use { it.write(content.toByteArray()) }
+                val bytes = content.toByteArray()
+                // "wt" truncates: "w" alone can leave a partially written file.
+                resolver.openOutputStream(uri, "wt")?.use { out ->
+                    out.write(bytes)
+                    out.flush()
+                }
                 values.clear()
                 values.put(MediaStore.Downloads.IS_PENDING, 0)
                 resolver.update(uri, values, null, null)
