@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -213,6 +214,8 @@ func (e *engine) marshalSession() (string, error) {
 // isFingerprintConflict reports Proton's 409/2500 "client public key
 // fingerprint conflict" answer, the one error that a key rotation fixes.
 func isFingerprintConflict(err error) bool {
-	apiErr, ok := err.(*proton.APIError)
-	return ok && apiErr.Status == 409 && apiErr.Code == 2500
+	var apiErr *proton.APIError
+	// The caller wraps the error ("request certificate: %w"), so a type assertion
+	// never matched and the rotation silently never ran - use errors.As.
+	return errors.As(err, &apiErr) && apiErr.Status == 409 && apiErr.Code == 2500
 }
